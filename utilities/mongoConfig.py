@@ -5,7 +5,7 @@ MONGO = {"ip": "127.0.0.1",
          "collection": "Mongo_User_Collection"
          }
 
-InputFileName = "russo-ukrainian-war-2022.csv"
+InputFileName = "new_dataset_only_families.csv"
 
 
 

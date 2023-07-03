@@ -70,7 +70,8 @@ class Model:
     def load_model(self):
         df = pd.read_csv(f'{STATS_PATH}pipeline_result.csv', sep='\t')
         best_model = df['valid_rocauc'].idxmax()
-        self.decision_th = df.iloc[best_model]['decision_threshold']
+        
+        self.decision_th = df.iloc[best_model]['decision_threshold'] if df.iloc[best_model]['decision_threshold'] > 0.0 else None
         self.features = ast.literal_eval(df.iloc[best_model]['features'])
 
         with open(f'{STATS_PATH}model.pkl', "rb") as f_in:
@@ -81,7 +82,7 @@ class Model:
 
     def train_predict(self, x_train, y_train, x_val):
         self.fit(x_train, y_train)
-        return self.predict_proba(x_train)[:, 1], self.predict_proba(x_val)[:, 1]
+        return self.predict_proba(x_train), self.predict_proba(x_val)
 
     """Prediction function that predict without decision correction in case of no proper threshold
     In case of correction threshold (after fine-tuning) we predict with proper prediction threshold"""
@@ -93,7 +94,7 @@ class Model:
             return self.model.predict(X)
         else:
             Probs = self.predict_proba(X)[:, 1].copy()
-            return Probs >= self.decision_th
+            return Probs > self.decision_th
 
     def predict_proba(self, X):
         if self.features is not None:

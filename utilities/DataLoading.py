@@ -53,7 +53,7 @@ class DataLoading:
         if self.verbose: print("Data Loading: Prepare function")
 
         """Read CSV file and balance the classes"""
-        df = pd.read_csv(self.single_file, header=0, sep='\t')
+        df = pd.read_csv(self.single_file, header=0, sep=',')
 
         """Split the data into train/val and testing sets"""
         visible_df, test_df = self.split(df)
@@ -85,15 +85,16 @@ class DataLoading:
     def store_df(self, X_visible, X_test):
         """Store dataframes in separate files for each feature category as visible and hidden portion"""
         X_visible.to_csv(self.single_file.replace(".csv", self.visible_postfix),
-                        sep="\t", index=False)
+                        sep=",", index=False)
         X_test.to_csv(self.single_file.replace(".csv", self.hidden_postfix),
-                        sep="\t", index=False)
+                        sep=",", index=False)
 
 
     def _load_csv_file(self, filename):
-        X = pd.read_csv(filename, sep="\t", header=0)
+        X = pd.read_csv(filename, sep=",", header=0)
         Y = X["target"].copy()
-        X.drop(["target", "user_id"], axis=1, inplace=True)
+
+        X.drop(["target"], axis=1, inplace=True)
         X.replace([np.inf, -np.inf], 0, inplace=True)
         return X, Y
 
@@ -109,16 +110,25 @@ class DataLoading:
             Y_test = Y_test.astype(int)
 
             if self.verbose:
+                stats_v = []
+                stats_h = []
+                for target in set(Y_train):
+                    stats_v.append(f"class {target}: {sum(Y_train == target)}")
+                    stats_h.append(f"class {target}: {sum(Y_test == target)}")
+
                 print('Data Loading: Loaded dataset with:' +
-                      f'\n\tVisible portion, class 0:{sum(Y_train == 0)} and 1:{sum(Y_train == 1)}' +
-                      f'\n\t Hold-out portiona, class 0:{sum(Y_test == 0)} and 1:{sum(Y_test == 1)}')
+                      f'\n\t' + ' and '.join(stats_v) +
+                      f'\n\t' + ' and '.join(stats_h))
             return X_train, Y_train, X_test, Y_test
         else:
             X, Y = self._load_csv_file(self.single_file)
             Y = Y.astype(int)
             if self.verbose:
-                print('Data Loading: Loaded dataset with:' +
-                      f'\n\tWith class 0:{sum(Y == 0)} and 1:{sum(Y == 1)}')
+                stats = []
+                for target in set(Y):
+                    stats.append(f"class {target}: {sum(Y == target)}")
+                print('Data Loading: Loaded dataset with:\n\t' +
+                      ' and '.join(stats))
             return X, Y
 
 
