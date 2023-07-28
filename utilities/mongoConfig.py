@@ -5,7 +5,7 @@ MONGO = {"ip": "127.0.0.1",
          "collection": "Mongo_User_Collection"
          }
 
-InputFileName = "new_dataset_only_families.csv"
+InputFileName = "cresci-2017_extracted.csv"#"Twibot-22_extracted.csv"#"Twibot-22_extracted.csv"
 
 
 

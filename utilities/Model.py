@@ -80,9 +80,9 @@ class Model:
     def fit(self, x, y):
         self.model.fit(x, y)
 
-    def train_predict(self, x_train, y_train, x_val):
+    def train_predict(self, x_train, y_train, x_val, probs=True):
         self.fit(x_train, y_train)
-        return self.predict_proba(x_train), self.predict_proba(x_val)
+        return (self.predict_proba(x_train), self.predict_proba(x_val)) if probs else (self.predict(x_train), self.predict(x_val))
 
     """Prediction function that predict without decision correction in case of no proper threshold
     In case of correction threshold (after fine-tuning) we predict with proper prediction threshold"""

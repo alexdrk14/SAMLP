@@ -91,10 +91,13 @@ class DataLoading:
 
 
     def _load_csv_file(self, filename):
-        X = pd.read_csv(filename, sep=",", header=0)
+        X = pd.read_csv(filename, sep="\t", header=0)
         Y = X["target"].copy()
+        to_drop = ['target']
+        if 'uid' in X.columns:
+            to_drop.append("uid")
 
-        X.drop(["target"], axis=1, inplace=True)
+        X.drop(to_drop, axis=1, inplace=True)
         X.replace([np.inf, -np.inf], 0, inplace=True)
         return X, Y
 

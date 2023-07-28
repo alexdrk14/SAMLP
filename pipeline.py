@@ -20,7 +20,7 @@ from sklearn.pipeline import Pipeline
 from tqdm import tqdm
 
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, confusion_matrix, mean_squared_error, make_scorer
+from sklearn.metrics import roc_auc_score, roc_curve, auc, f1_score, precision_recall_curve, confusion_matrix, mean_squared_error, make_scorer
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Lasso
 
@@ -45,10 +45,10 @@ PLOTS_PATH = 'plots/'
 """
 def roc_auc_evaluation(y_true, y_pred_prob):
     """In case of binary classification when function receive single vector"""
-
+    
     """in case of binary classification even if we recieve the predicted Y or the probabilities of Y"""
     if len(set(y_true)) <= 2 or (len(y_pred_prob.shape) == 2 and y_pred_prob.shape[1] == 2): #Binary classification problem
-        roc_auc_score(y_true, y_pred_prob if len(y_pred_prob.shape) == 1 else y_pred_prob[:,1])
+        return roc_auc_score(y_true, y_pred_prob if len(y_pred_prob.shape) == 1 else y_pred_prob[:,1])
 
     else:#Non binary classification
         """In case when we have multi-class with Y-pred is actually probabilities for each class"""
@@ -98,20 +98,25 @@ def create_new_grid(values, found):
 
     """If found parameter for lasso belong to the lower or upper bound we need to extend the range and check again"""
     if found in [values[0], values[-1]]:
+        """Minimum case """
         if found == values[0]:
-            end = found
-            start = end - (len(values) * step)
+            end = values[1]#found
+            start = values[0] - values[1]#end - (len(values) * step)
 
             """If the lower bound become negative, we reduce the step and compute the range again with small overlap over the high values"""
             if end - (len(values) * step) < 0.0:
-                step /= 10
+                #step /= 10
                 start = end - (len(values) * step)
-                end += step*(int(0.5* len(values)) + 1 )
+                end += step #step*(int(0.5* len(values)) + 1 )
 
         elif found == max(values):
-            start = found
+            start = values[-2]#found
             end = start + (len(values) * step)
+        """Check if start or end is too high or too low"""
+        if start <= 0.000001 or end > 10 or step <= 0.000001:
+            return None
         """Return new updated range"""
+        step = (end - start) / len(values)
         return np.arange(start, end , step)
     else:
         """In other case when found value belong between upper and lower bound we have found best local value"""
@@ -126,7 +131,7 @@ class Piepeline:
                        shuffle=True, verbose=True):
          
         self.verbose = verbose
-
+        self.recursions_max = 10
         self.scorer = scorer
 
         """Loading the Data splited in train/test and hold-out portions"""
@@ -156,10 +161,11 @@ class Piepeline:
 
         self.FS = FS
         
+        
+        
         self.models = [Model(nmbr_to_select=NumberOfConfig, configs_ranges=Models_grid_params[i], model=Models[i]) for i in range(len(Models))]
         self.features_file = f'{STATS_PATH}selected_features.txt'
-
-
+        #self.models[0].parameters = [{'max_depth': 7, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7, 'min_child_weight': 10.0, 'gamma': 0, 'reg_lambda': 2.0, 'n_estimators': 3000, 'eval_metric': 'auc', 'tree_method': 'gpu_hist', 'predictor': 'gpu_predictor', 'objective': 'binary:logistic', 'use_label_encoder': False, 'scale_pos_weight': 7.144870089322075}]
         self.fs_grid_params = fs_grid_params
         self.K = K
         self.stratified = stratified
@@ -169,7 +175,7 @@ class Piepeline:
         self.main()
 
 
-    def feature_selection(self):
+    def feature_selection(self, recursions = 0):
 
         if os.path.exists(self.features_file):
             self.selected_features = ast.literal_eval(open(self.features_file, "r").read())
@@ -201,8 +207,9 @@ class Piepeline:
                                   {'model__alpha': self.fs_grid_params['alpha']},
                                   cv=kfolds.split(X, Y),
                                   #"""For binary classification use roc_auc scorer in other case of regression or multiclass use rmse"""
-                                  scoring="roc_auc" if self.binary_class else "neg_mean_squared_error",
-                                  verbose=3, n_jobs = 60
+                                  scoring="neg_mean_squared_error", #"roc_auc" if self.binary_class else "neg_mean_squared_error",
+                                  verbose=3,#3, 
+                                  n_jobs = 60
                                   )
             search.fit(X, Y)
 
@@ -214,16 +221,20 @@ class Piepeline:
 
         best_alpha = best_alpha[0][0]
         new_range = create_new_grid(self.fs_grid_params['alpha'], best_alpha)
-        if new_range is not None:
+        if new_range is not None:# and recursions < self.recursions_max:
             print(f"Lasso found boundary alpha: {best_alpha} from {self.fs_grid_params['alpha']}")
             """Update the alpha range"""
             self.fs_grid_params['alpha'] = new_range
             print(f"New alpha range: {self.fs_grid_params['alpha']}")
-            return self.feature_selection()
+            return self.feature_selection(recursions = recursions+1)
 
         print(f'Best lasso alpha:{best_alpha} from {self.fs_grid_params["alpha"]}')
-        best_coef = sum(lasso_coef[best_alpha]) / len(lasso_coef[best_alpha])
-
+        #best_coef = sum(lasso_coef[best_alpha]) / len(lasso_coef[best_alpha])
+        model_L = Lasso(max_iter=1000000, alpha=best_alpha)
+        scaler = StandardScaler()
+        X = scaler.fit_transform(self.X_visible)
+        model_L.fit(X, self.Y_visible)
+        best_coef = model_L.coef_
 
         f_out = open(f'{STATS_PATH}log_lasso_alpha.txt', "w+")
         f_out.write(f'Best alpha:{best_alpha}\n')
@@ -246,8 +257,11 @@ class Piepeline:
     def fine_tune_models(self):
 
         self.data_stats = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: None))))
-        performances = defaultdict(lambda: defaultdict(lambda: {"roc-auc-val": [], "roc-auc-train": []}))
-            
+        #performances = defaultdict(lambda: defaultdict(lambda: {"roc-auc-val": [], "roc-auc-train": []}))
+        
+        performances = defaultdict(lambda: defaultdict(lambda: {"f1-val": [], "f1-train": []}))
+        
+
         fold_ind = 0
         skfold = StratifiedKFold(n_splits=self.K, shuffle=self.shuffle)
         for train_index, val_index in skfold.split(self.X_visible, self.Y_visible):
@@ -265,10 +279,13 @@ class Piepeline:
                     model.create_model(model_config)
 
                     """Train model in train data, predict train data and predict validation data"""
-                    YP_train, YP_val = model.train_predict(train_X, train_Y, val_X)
+                    YP_train, YP_val = model.train_predict(train_X, train_Y, val_X, probs=False)
 
-                    performances[i][f'{model_config}']["roc-auc-val"].append(roc_auc_evaluation(val_Y, YP_val))
-                    performances[i][f'{model_config}']["roc-auc-train"].append(roc_auc_evaluation(train_Y, YP_train))
+                    #performances[i][f'{model_config}']["roc-auc-val"].append(roc_auc_evaluation(val_Y, YP_val))
+                    #performances[i][f'{model_config}']["roc-auc-train"].append(roc_auc_evaluation(train_Y, YP_train))
+                    performances[i][f'{model_config}']["f1-val"].append(f1_score(val_Y, YP_val))
+                    performances[i][f'{model_config}']["f1-train"].append(f1_score(train_Y, YP_train))
+
 
                     """Keep false positive rate, true positive rate for later plotting with shadowing for ROC-AUC curves"""
                     #fpr, tpr, _ = roc_curve(val_Y, YP_val)
@@ -300,7 +317,9 @@ class Piepeline:
                         performances[model_index][config][metric])
 
             """Find model configuration which provide maximum average ROC-AUC score over validation set"""
-            model_best_config = [(config, performances[model_index][config]["roc-auc-val"]) for config in performances[model_index]]
+            #model_best_config = [(config, performances[model_index][config]["roc-auc-val"]) for config in performances[model_index]]
+            model_best_config = [(config, performances[model_index][config]["f1-val"]) for config in performances[model_index]]
+           
             model_best_config.sort(key=lambda t: t[1], reverse=True)
 
             """Store this configuration for particular model"""
@@ -313,42 +332,62 @@ class Piepeline:
             model.fit(self.X_visible, self.Y_visible)
             ready_models.append(model)
             
-            hold_out_roc_auc = roc_auc_evaluation(self.Y_holdOUT,
-                                             model.predict(self.X_holdOUT))
+            hold_out_perf = f1_score(self.Y_holdOUT, model.predict(self.X_holdOUT))#roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
 
             """Binary classification requires adjust of the decision threashold"""
             if self.binary_class:
+                Y_pred_probs = model.predict_proba(self.X_holdOUT)[:, 1]
+                
+                """Compute the Precision vs Recall Curve"""
+                precision, recall, thresholds = precision_recall_curve(self.Y_holdOUT, Y_pred_probs)
+                
+                """Get f-score for each threshold"""
+                fscore = (2 * precision * recall) / (precision + recall)
+
+                """Identify the threshold with the highest performance"""
+                best_threshold = thresholds[np.argmax(fscore)]
+                decision_th.append(best_threshold)
+                
+
                 """Compute and store figure with ROC-AUC performance"""
-                fpr, tpr, th = roc_curve(self.Y_holdOUT,
-                                      model.predict_proba(self.X_holdOUT)[:, 1])
+                #fpr, tpr, th = roc_curve(self.Y_holdOUT,
+                #                      model.predict_proba(self.X_holdOUT)[:, 1])
 
                 #hold_out_roc_auc = roc_auc_evaluation(self.Y_holdOUT,
                 #                             model.predict(self.X_holdOUT))
 
                 """calculate the g-mean for each threshold"""
-                g_mean = np.sqrt(tpr * (1 - fpr))
+                #g_mean = np.sqrt(tpr * (1 - fpr))
 
                 """locate the index of the larger g-mean"""
-                ix = np.argmax(g_mean)
+                #ix = np.argmax(g_mean)
 
-                decision_th.append(th[ix])
-                gmeans.append(g_mean[ix])
+                #decision_th.append(th[ix])
+                #gmeans.append(g_mean[ix])
+
+                hold_out_perf = f1_score(self.Y_holdOUT, model.predict_proba(self.X_holdOUT)[:,1] >= best_threshold )
+
+                
             else:
                 decision_th.append(-1.0)
-                gmeans.append(-1.0)
+                #gmeans.append(-1.0)
             
-            train_roc_auc.append(performances[model_index][best_configs[-1]]["roc-auc-train"] )
-            val_roc_auc.append(performances[model_index][best_configs[-1]]["roc-auc-val"])
-            holdout_roc_auc.append(hold_out_roc_auc)
+            #train_roc_auc.append(performances[model_index][best_configs[-1]]["roc-auc-train"] )
+            #val_roc_auc.append(performances[model_index][best_configs[-1]]["roc-auc-val"])
+            #holdout_roc_auc.append(hold_out_roc_auc)
+
+            train_roc_auc.append(performances[model_index][best_configs[-1]]["f1-train"] )
+            val_roc_auc.append(performances[model_index][best_configs[-1]]["f1-val"])
+            holdout_roc_auc.append(hold_out_perf)
 
         stats_df = pd.DataFrame([model_labels, model_indexes,
                                  train_roc_auc, val_roc_auc, holdout_roc_auc, 
-                                 decision_th, gmeans, best_configs, 
+                                 decision_th, best_configs, #gmeans, best_configs, 
                                  [f'{self.selected_features}' for i in model_indexes]]).T
 
-        stats_df.columns = ['name', 'model_index', 'train_rocauc',
-                            'valid_rocauc', 'holdout_rocauc', 
-                            'decision_threshold', 'gmean', 'params',
+        stats_df.columns = ['name', 'model_index', 'train_f1',
+                            'valid_f1', 'holdout_f1', 
+                            'decision_threshold', 'params',#'gmean', 'params',
                             'features']
 
         stats_df.to_csv(f'{STATS_PATH}pipeline_result.csv', index=False, sep='\t')
@@ -362,17 +401,19 @@ class Piepeline:
                 self.data_stats[model_ind][fold] = self.data_stats[model_ind][fold][conf]
         
         """Find best model index with highest avg roc-auc Validation score"""
-        best_model_index = [(ind, performances[ind][best_configs[ind]]["roc-auc-val"]) for ind in range(len(performances))]
+        best_model_index = [(ind, performances[ind][best_configs[ind]]["f1-val"]) for ind in range(len(performances))]
         best_model_index.sort(key=lambda t:t[1], reverse=True)
-        best_model = ready_models[best_model_index[0][0]]
+        best_model_index = best_model_index[0][0]
+        best_model = ready_models[best_model_index]
 
         
         if self.binary_class:
+            
             print("TN\tFP\tFN\tTP")
             tn, fp, fn, tp = confusion_matrix(self.Y_holdOUT,
-                [1 if pred > decision_th[0] else 0  for pred in best_model.predict_proba(self.X_holdOUT)[:, 1]]).ravel()
+                                              best_model.predict_proba(self.X_holdOUT)[:, 1] >= decision_th[best_model_index]).ravel()
             print(f"{tn}\t{fp}\t{fn}\t{tp}")
-            plot_roc_curves(model_labels, self.data_stats, PLOTS_PATH)
+            #plot_roc_curves(model_labels, self.data_stats, PLOTS_PATH)
         else:
             cnf_matrix = confusion_matrix(self.Y_holdOUT, best_model.predict(self.X_holdOUT))
             plot_confusion_figure(cnf_matrix, best_model.model.classes_, PLOTS_PATH)
@@ -446,32 +487,33 @@ if __name__ == "__main__":
     NumberOfConfig = 50
     scoring_function = make_scorer(roc_auc_evaluation, greater_is_better=True)
     defined_configs = [ #XGBoost Classifier range of parameters
-                        {'max_depth': [6, 7, 8, 9, 11, 13],
-                        'learning_rate': [0.005, 0.01, 0.015],
+                        {'max_depth': [6, 9, 12],
+                        'learning_rate': [0.005, 0.01, 0.1],
                         'subsample': [0.65, 0.7, 0.75, 0.8, 0.85],
-                        'colsample_bytree': [0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75],
-                        'min_child_weight': [0.5, 1.0, 3.0, 5.0, 7.0, 10.0],
+                        'colsample_bytree': [0.65, 0.7, 0.75],
+                        'min_child_weight': [0.5, 1.0, 3.0],
                         'gamma': [0, 0.05, 0.1, 0.25, 0.5, 1.0],
-                        'reg_lambda': [0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.5, 2.0, 3.0],
+                        'reg_lambda': [0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.5, 2.0],
                         'n_estimators': [1000, 1500, 2000, 2500, 3000],
                         'eval_metric': ['auc'],
                         'tree_method': ['gpu_hist'],
                         'predictor': ['gpu_predictor'],
                         'objective': ['binary:logistic'],
+                        'num_parallel_tree': [10],
                         'use_label_encoder': [False]},
 
                         #RandomForest classifier range of parameters
 
-                       {'n_jobs': [60],
-                        'max_depth': [5, 6, 7, 8, 9, 10, 11, 12, 13],
-                        'max_features': ['sqrt'],
-                        'min_samples_leaf': [1, 2, 3, 4, 5],
-                        'min_samples_split': [2, 3, 4, 5, 6, 7, 8],
-                        'n_estimators': [1000, 1500, 2000, 2500, 3000, 3500]}
+                       #{'n_jobs': [60],
+                       # 'max_depth': [5, 6, 7, 8, 9, 10, 11, 12, 13],
+                       # 'max_features': ['sqrt'],
+                       # 'min_samples_leaf': [1, 2, 3, 4, 5],
+                       # 'min_samples_split': [2, 3, 4, 5, 6, 7, 8],
+                       # 'n_estimators': [1000, 1500, 2000, 2500, 3000, 3500]}
                        ]
 
     Piepeline(FS=Lasso,
-              Models=[XGBClassifier, RandomForestClassifier],
+              Models=[XGBClassifier],#, RandomForestClassifier],
               fs_grid_params={'alpha': np.arange(0.00001, 0.0001, 0.00001)},
               Models_grid_params=defined_configs,
               NumberOfConfig=NumberOfConfig,
