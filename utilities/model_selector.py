@@ -12,7 +12,7 @@ import configuration as cnf
 
 from tqdm import tqdm
 from operator import itemgetter
-from utilities.Model import Model
+from utilities.model_wrapper import ModelWrapper
 from collections import defaultdict
 
 
@@ -22,7 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_curve, roc_auc_score, f1_score, precision_recall_curve
+from sklearn.metrics import roc_curve, roc_auc_score, f1_score, precision_recall_curve, classification_report
 
 
 """Additional function which compute best decision threshold in order to maximize the PrecisionVSRecall or ROC.
@@ -88,7 +88,7 @@ class ModelSelector:
                     cnf.Models_grid_params[model_index]['objective'] = ['multi: softprob']
                     cnf.Models_grid_params[model_index]['num_class'] = [len(set(Y))]
 
-        self.models = [Model(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i]) for i
+        self.models = [ModelWrapper(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i]) for i
                        in cnf.utilize_models]
 
         self.stratified = stratified
@@ -210,7 +210,22 @@ class ModelSelector:
                                                'decision_threshold', 'params'])
 
         pipeline_result .to_csv(f'{cnf.STATS_PATH}pipeline_result.csv', index=False, sep='\t')
-        self.models[self.best_model_index]
+
+        Y_pred = self.models[self.best_model_index].predict_proba(X_hold_out)
+        if self.binary_class:
+            Y_pred = Y_pred[:, 1] >= self.models[self.best_model_index].decision_th
+
+        ROC_AUC = roc_auc_score(Y_hold_out, Y_pred, multi_class="raise" if self.binary_class else 'ovr')
+        F1 = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else None)
+        report = classification_report(Y_hold_out, Y_pred, target_names=cnf.MultyClassNames)
+
+        logs = f"Model achieve scores over test set: ROC-AUC:{ROC_AUC}, F1:{F1}\n" + \
+               f"Classification report:\n{report}"
+
+        print(logs)
+        f_out = open(f"{cnf.STATS_PATH}report.txt", "w+")
+        f_out.write(f"{logs}")
+        f_out.close()
 
 
     def store_final_model(self, X_ALL, Y_ALL):

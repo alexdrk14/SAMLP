@@ -1,15 +1,15 @@
 """"####################################################################################################################
 Author: Alexander Shevtsov ICS-FORTH
-E-mail: shevtsov@ics.forth.gr
+E-mail: shevtsov@ics.forth.gr / alex.drk14@gmail.com
 -----------------------------------
-Dynamic Model class that can take any possible model with limitation of fit/predict functions  and allow:
-    - random select possible set of hyper-parameter configurations
+Dynamic ModelWrapper class that can take any possible model with limitation of fit/predict/predict_proba functions  and allow:
+    - random select possible set of hyper parameter configurations
     - train/prediction/proba predictions
-    - load / store of trained model
+    - load / store of trained model and parameters
     - loading of fine-tuned threshold for better prediction
 ####################################################################################################################"""
 import random, ast, pickle, itertools
-import pandas as pd
+
 
 """
    Model class that store the entire model and configurable set of parameters, 
@@ -18,7 +18,7 @@ import pandas as pd
 STATS_PATH = 'stats/'
 
 
-class Model:
+class ModelWrapper:
 
     def __init__(self, nmbr_to_select=0, feature_category="", configs_ranges={}, model=None):
 

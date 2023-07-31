@@ -79,11 +79,11 @@ def plot_shap_figure(model, data, binary=True):
 def plot_confusion_figure(model, data_X, data_Y):
     fig = plt.figure()
 
-    YP = model.predict(data_X) if model.decision_th is None else model.predict(data_X)[:, 1] >= threshold
+    YP = model.predict(data_X) if model.decision_th is None else model.predict(data_X)[:, 1] >= model.decision_th
     cm = confusion_matrix(data_Y, YP)
     
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                               display_labels=MultyClassNames)
+                               display_labels=cnf.MultyClassNames)
     disp.plot()
  
     plt.savefig(f'{cnf.PLOTS_PATH}confusion_matrix.png', bbox_inches='tight', dpi=600, facecolor='w')
