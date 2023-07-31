@@ -22,7 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_curve, f1_score, precision_recall_curve
+from sklearn.metrics import roc_curve, roc_auc_score, f1_score, precision_recall_curve
 
 
 """Additional function which compute best decision threshold in order to maximize the PrecisionVSRecall or ROC.
@@ -62,7 +62,7 @@ class ModelSelector:
         """Local variables that used in order to identify if the dataset is for binary classification or for regression"""
         self.binary_class = True if len(set(Y)) == 2 else False
         self.cont_values = True if type(list(Y)[0]) == np.float64 or len(
-            set(self.Y_visible)) > 15 else False
+            set(Y)) > 15 else False
 
 
 
@@ -83,8 +83,10 @@ class ModelSelector:
                         1: (Y.shape[0] / (2 * pos_count))
                     }]
         elif len(set(Y)) != 2:
-            cnf.Models_grid_params[0]['objective'] = ['multi: softprob']
-            cnf.Models_grid_params[0]['num_class'] = [len(set(Y))]
+            for model_index in cnf.utilize_models:
+                if cnf.Models[model_index] == XGBClassifier:
+                    cnf.Models_grid_params[model_index]['objective'] = ['multi: softprob']
+                    cnf.Models_grid_params[model_index]['num_class'] = [len(set(Y))]
 
         self.models = [Model(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i]) for i
                        in cnf.utilize_models]
@@ -135,8 +137,8 @@ class ModelSelector:
                     #                                                    model.predict_proba(val_X)[:, 1],
                     #                                                    comp_type="PR")
 
-                    performances[model_index][f'{model_config}']["perf-val"].append(f1_score(val_Y, YP_val))
-                    performances[model_index][f'{model_config}']["perf-train"].append(f1_score(train_Y, YP_train))
+                    performances[model_index][f'{model_config}']["perf-val"].append(f1_score(val_Y, YP_val, average='macro' if not self.binary_class else None))
+                    performances[model_index][f'{model_config}']["perf-train"].append(f1_score(train_Y, YP_train, average='macro' if not self.binary_class else None))
 
                     """Keep false positive rate, true positive rate for later plotting with shadowing for ROC-AUC curves"""
                     # fpr, tpr, _ = roc_curve(val_Y, YP_val)
@@ -193,7 +195,7 @@ class ModelSelector:
                                                                 Y_pred,
                                                                 comp_type="PR")
 
-            hold_out_perf = f1_score(Y_hold_out, Y_pred)  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
+            hold_out_perf = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else None)  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
 
             """Update the model decision threshold"""
             self.models[model_index].decision_th = best_threshold
@@ -208,6 +210,8 @@ class ModelSelector:
                                                'decision_threshold', 'params'])
 
         pipeline_result .to_csv(f'{cnf.STATS_PATH}pipeline_result.csv', index=False, sep='\t')
+        self.models[self.best_model_index]
+
 
     def store_final_model(self, X_ALL, Y_ALL):
         self.models[self.best_model_index].train(X_ALL, Y_ALL)

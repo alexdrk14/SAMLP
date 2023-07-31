@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 DATA_PATH = 'data/'
 STATS_PATH = 'stats/'
 PLOTS_PATH = 'plots/'
+InputFileName = "v2_dataset_only_families.csv"
 
 features_file = f"{STATS_PATH}selected_features.txt"
 
@@ -12,6 +13,8 @@ features_file = f"{STATS_PATH}selected_features.txt"
 fs_grid_params = {'alpha': np.arange(0.00001, 0.0001, 0.00001)}
 FOLD_K = 5
 NumberOfConfig = 50
+
+MultyClassNames = ["Emotet", "Dridex", "QakBot", "BazarLoader", "BumbleBee"]
 
 Models_grid_params = [#"""XGBoost model"""
                         {'max_depth': [6, 9, 12],

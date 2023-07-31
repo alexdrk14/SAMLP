@@ -116,7 +116,7 @@ class FeatureSelector:
             """Update the alpha range"""
             cnf.fs_grid_params['alpha'] = new_range
             if self.verbose: print(f"New alpha range: {cnf.fs_grid_params['alpha']}")
-            return False
+            return None
 
         if self.verbose: print(f'Best lasso alpha:{best_alpha} from {cnf.fs_grid_params["alpha"]}')
 
@@ -155,10 +155,10 @@ class FeatureSelector:
         initial_features = X.shape[1]
         while features_found is None:
             """Executions value now not used, bu in future can be used to limit number of executions"""
-            features_found = self.feature_selection(X, Y, executions=executions)
+            features_found = self.__feature_selection_round(X, Y, executions=executions)
 
         if self.verbose:
             print(f'{datetime.now()} Done\n' +
-                  f'\tSelected {len(features_found)} of {initial_features} features.')
+                  f'\tSelected {len(features_found )} of {initial_features} features.')
 
         return features_found

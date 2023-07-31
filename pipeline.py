@@ -11,8 +11,8 @@ from datetime import datetime
 
 from utilities.DataLoading import DataLoading
 from utilities.feature_selector import FeatureSelector
-from utilities.mongoConfig import ModelSelector
-from utilities.plotting import plot_shap_figure
+from utilities.model_selector import ModelSelector
+from utilities.plotting import plot_shap_figure, plot_confusion_figure
 
 
 class Piepeline:
@@ -68,7 +68,9 @@ class Piepeline:
         print(f'{datetime.now()} Shap explain plotting')
         """Plot SHAP explanability"""
         plot_shap_figure(MS.models[MS.best_model_index], X_hold, binary=self.binary_class)
-
+        
+        
+        plot_confusion_figure(MS.models[MS.best_model_index], X_hold, Y_hold)
         """Merge train and test dataset, train the final model and store it"""
         MS.store_final_model(pd.concat([X_train, X_hold]), pd.concat([Y_train, Y_hold]))
 

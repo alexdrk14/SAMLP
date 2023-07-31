@@ -2,6 +2,7 @@ import shap
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import auc, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix
 import configuration as cnf
 
 def plot_roc_curves(model_names, data, output_path):
@@ -75,14 +76,16 @@ def plot_shap_figure(model, data, binary=True):
         fig.savefig(f'{cnf.PLOTS_PATH}shap_bar_all.png', bbox_inches='tight', dpi=600, facecolor='w')
         plt.clf()
 
-def plot_confusion_figure(cm, classes, output_path):
+def plot_confusion_figure(model, data_X, data_Y):
     fig = plt.figure()
-    
+
+    YP = model.predict(data_X) if model.decision_th is None else model.predict(data_X)[:, 1] >= threshold
+    cm = confusion_matrix(data_Y, YP)
     
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                               display_labels=classes)
+                               display_labels=MultyClassNames)
     disp.plot()
  
-    plt.savefig(f'{output_path}confusion_matrix.png', bbox_inches='tight', dpi=600, facecolor='w')
+    plt.savefig(f'{cnf.PLOTS_PATH}confusion_matrix.png', bbox_inches='tight', dpi=600, facecolor='w')
     plt.clf()
 
