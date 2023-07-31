@@ -31,10 +31,10 @@ class Model:
         """Define number of configurations that should be selected from 
         pre-define spaces of possible hyper-parameter configurations"""
         if nmbr_to_select > 0:
-            self.create_parameters_list(nmbr_to_select, configs_ranges)
+            self.__create_parameters_list(nmbr_to_select, configs_ranges)
 
     """Create list of hyper-parameters for model via random selection from pre-defined possible hyper-parameter range"""
-    def create_parameters_list(self, select, dict_range):
+    def __create_parameters_list(self, select, dict_range):
         config_keys = list(dict_range.keys())
 
         conf = [dict_range[param] for param in config_keys]
@@ -50,29 +50,41 @@ class Model:
         """Parse parameters to original model"""
         self.model = self.__model_origin(**self.config)
 
-    def load_params(self):
-        """Load selected parameters from fine-tuned model for particular
-        feature category and create original model based on those parameters"""
-        self.create_model(ast.literal_eval(open("stats/best_model_params.txt", "r").read().split("\n")[0]))
+    #def load_params(self):
+    #    """Load selected parameters from fine-tuned model for particular
+    #    feature category and create original model based on those parameters"""
+    #    self.create_model(ast.literal_eval(open("stats/best_model_params.txt", "r").read().split("\n")[0]))
 
-    def store_params(self):
+    def __store_params(self):
         """Store selected parameters"""
+        temp_data = {"parameters": self.config,
+                     "decision_threshold": self.decision_th}
         f_out = open(f'{STATS_PATH}best_model_params.txt', "w+")
-        f_out.write(f'{self.config}\n')
+        f_out.write(f'{temp_data}\n')
+        f_out.close()
+
+    def __load_params(self):
+        """Store selected parameters"""
+        temp_data = ast.literal_eval(open(f'{STATS_PATH}best_model_params.txt', "r").read())
+        self.config = temp_data["parameters"]
+        self.decision_th = temp_data["decision_threshold"]
+
 
     """Store model in form of pickle object for further usage"""
     def save_model(self):
-        self.store_params()
+        self.__store_params()
         pickle.dump(self.model, open(f'{STATS_PATH}model.pkl', "wb"))
 
 
     """Read pickle form of pre-trained model for further usage as predictor"""
     def load_model(self):
-        df = pd.read_csv(f'{STATS_PATH}pipeline_result.csv', sep='\t')
-        best_model = df['valid_rocauc'].idxmax()
-        
-        self.decision_th = df.iloc[best_model]['decision_threshold'] if df.iloc[best_model]['decision_threshold'] > 0.0 else None
-        self.features = ast.literal_eval(df.iloc[best_model]['features'])
+        #df = pd.read_csv(f'{STATS_PATH}pipeline_result.csv', sep='\t')
+        #best_model = df['valid_perf'].idxmax()
+
+        #self.decision_th = df.iloc[best_model]['decision_threshold'] if df.iloc[best_model]['decision_threshold'] != -1.0 else None
+        self.features = ast.literal_eval(open(f'{STATS_PATH}selected_features.txt').read())
+
+        self.__load_params()
 
         with open(f'{STATS_PATH}model.pkl', "rb") as f_in:
             self.model = pickle.load(f_in)

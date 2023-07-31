@@ -14,18 +14,19 @@ import numpy as np
 from os import path
 import utilities.mongoConfig as cnf
 from sklearn.model_selection import train_test_split
-
+import configuration as cnf
 
 
 class DataLoading:
 
-    def __init__(self, data_path, test_size=0.2, verbose=False, shuffle=True):
+    def __init__(self, test_size=0.2, verbose=False, shuffle=True):
         """Define all type of features filenames (output files from feature extraction methods)"""
 
+        data_path = cnf.DATA_PATH
         if not data_path.endswith('/'):
             data_path += '/'
         
-        self.single_file = f'{data_path}{cnf.InputFileName}'
+        self.single_file = f'{cnf.DATA_PATH}{cnf.InputFileName}'
 
         self.visible_postfix = "_visible.csv"
         self.hidden_postfix = "_hold_out.csv"
@@ -101,28 +102,42 @@ class DataLoading:
         X.replace([np.inf, -np.inf], 0, inplace=True)
         return X, Y
 
-    def load_dataset(self, splited=True):
+    def load_dataset(self, train=False, test=False, splited=True):
 
         if self.verbose:
             print(f'Data Loading: read csv')
         if splited:
+            if not train and not test:
+                return None
+
             """Loading visible and hidden dataframes"""
-            X_train, Y_train = self._load_csv_file(self.single_file.replace(".csv", self.visible_postfix))
-            X_test, Y_test = self._load_csv_file(self.single_file.replace(".csv", self.hidden_postfix))
-            Y_train = Y_train.astype(int)
-            Y_test = Y_test.astype(int)
+            if train:
+                X_train, Y_train = self._load_csv_file(self.single_file.replace(".csv", self.visible_postfix))
+                Y_train = Y_train.astype(int)
+
+            if test:
+                X_test, Y_test = self._load_csv_file(self.single_file.replace(".csv", self.hidden_postfix))
+                Y_test = Y_test.astype(int)
+            targets = set(Y_train) if train else set(Y_train)
 
             if self.verbose:
                 stats_v = []
                 stats_h = []
-                for target in set(Y_train):
-                    stats_v.append(f"class {target}: {sum(Y_train == target)}")
-                    stats_h.append(f"class {target}: {sum(Y_test == target)}")
+                for target in targets:
+                    if train:
+                        stats_v.append(f"class {target}: {sum(Y_train == target)}")
+                    if test:
+                        stats_h.append(f"class {target}: {sum(Y_test == target)}")
 
                 print('Data Loading: Loaded dataset with:' +
                       f'\n\t' + ' and '.join(stats_v) +
                       f'\n\t' + ' and '.join(stats_h))
-            return X_train, Y_train, X_test, Y_test
+            if train and test:
+                return X_train, Y_train, X_test, Y_test
+            if train:
+                return X_train, Y_train
+            if test:
+                return X_test, Y_test
         else:
             X, Y = self._load_csv_file(self.single_file)
             Y = Y.astype(int)

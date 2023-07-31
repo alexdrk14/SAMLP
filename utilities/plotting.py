@@ -2,6 +2,7 @@ import shap
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import auc, ConfusionMatrixDisplay
+import configuration as cnf
 
 def plot_roc_curves(model_names, data, output_path):
     plt.rcParams.update({'font.size': 13})
@@ -52,26 +53,26 @@ def plot_roc_curves(model_names, data, output_path):
     plt.savefig(f'{output_path}roc_curves.png', bbox_inches='tight', dpi=600, facecolor='w')
 
 
-def plot_shap_figure(model, data, output_path, binary=True):
+def plot_shap_figure(model, data, binary=True):
     explainer = shap.TreeExplainer(model)
     fig = plt.figure()
     if binary:
         shap_values = explainer(data)
         shap.summary_plot(shap_values, plot_type='violin', show=False)
-        fig.savefig(f'{output_path}shap.png', bbox_inches='tight', dpi=600, facecolor='w')
+        fig.savefig(f'{cnf.PLOTS_PATH}shap.png', bbox_inches='tight', dpi=600, facecolor='w')
         plt.clf()
     else:
         shap_values = explainer.shap_values(data)
         for categ in range(0,len(shap_values)):
             shap.summary_plot(shap_values[categ], plot_type='violin', show=False)
-            fig.savefig(f'{output_path}shap_class_{categ}.png', bbox_inches='tight', dpi=600, facecolor='w')
+            fig.savefig(f'{cnf.PLOTS_PATH}shap_class_{categ}.png', bbox_inches='tight', dpi=600, facecolor='w')
             plt.clf()
         shap.summary_plot(shap_values, data.values, 
                           plot_type='bar', 
                           class_names=model.classes_,
                           feature_names=data.columns,
                           show=False)
-        fig.savefig(f'{output_path}shap_bar_all.png', bbox_inches='tight', dpi=600, facecolor='w')
+        fig.savefig(f'{cnf.PLOTS_PATH}shap_bar_all.png', bbox_inches='tight', dpi=600, facecolor='w')
         plt.clf()
 
 def plot_confusion_figure(cm, classes, output_path):
