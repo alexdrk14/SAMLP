@@ -9,7 +9,9 @@ Dynamic ModelWrapper class that can take any possible model with limitation of f
     - loading of fine-tuned threshold for better prediction
 ####################################################################################################################"""
 import random, ast, pickle, itertools
-
+from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
 
 """
    Model class that store the entire model and configurable set of parameters, 
@@ -26,7 +28,8 @@ class ModelWrapper:
         self.scaller = None
         self.feature_category = feature_category
         self.decision_th = None
-        self.features = None
+        self.features = None 
+        self.scaler = None
 
         """Define number of configurations that should be selected from 
         pre-define spaces of possible hyper-parameter configurations"""
@@ -38,8 +41,11 @@ class ModelWrapper:
         config_keys = list(dict_range.keys())
 
         conf = [dict_range[param] for param in config_keys]
-
-        selected = random.sample(list(itertools.product(*conf)), select)
+        conf = list(itertools.product(*conf))
+        if select >= len(conf):
+            selected = conf
+        else:
+            selected = random.sample(conf, select)
         self.parameters = [{config_keys[i]: sample[i] for i in range(len(config_keys))} for sample in selected]
 
     """Create model based on specific parameters"""
@@ -90,7 +96,11 @@ class ModelWrapper:
             self.model = pickle.load(f_in)
 
     def fit(self, x, y):
-        self.model.fit(x, y)
+        if type(self.model) not in [XGBClassifier, RandomForestClassifier]:
+            self.scaler = StandardScaler()
+            self.model.fit(self.scaler.fit_transform(x), y)
+        else:
+            self.model.fit(x, y)
 
     def train_predict(self, x_train, y_train, x_val, probs=True):
         self.fit(x_train, y_train)
@@ -103,7 +113,7 @@ class ModelWrapper:
             X = X[self.features]
 
         if self.decision_th is None:
-            return self.model.predict(X)
+            return self.model.predict(X) if self.scaler is None else self.model.predict(self.scaler.transform(X))
         else:
             Probs = self.predict_proba(X)[:, 1].copy()
             return Probs > self.decision_th
@@ -111,7 +121,7 @@ class ModelWrapper:
     def predict_proba(self, X):
         if self.features is not None:
             X = X[self.features]
-        return self.model.predict_proba(X)
+        return self.model.predict_proba(X) if self.scaler is None else self.model.predict_proba(self.scaler.transform(X))
 
 
 

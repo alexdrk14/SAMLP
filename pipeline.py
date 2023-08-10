@@ -67,7 +67,7 @@ class Piepeline:
 
         print(f'{datetime.now()} Shap explain plotting')
         """Plot SHAP explanability"""
-        plot_shap_figure(MS.models[MS.best_model_index], X_hold, binary=self.binary_class)
+        plot_shap_figure(MS.models[MS.best_model_index], X_hold, binary=MS.binary_class)
         
         
         plot_confusion_figure(MS.models[MS.best_model_index], X_hold, Y_hold)

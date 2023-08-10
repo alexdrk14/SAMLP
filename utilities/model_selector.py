@@ -19,10 +19,11 @@ from collections import defaultdict
 """Models that we use"""
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 
 
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import roc_curve, roc_auc_score, f1_score, precision_recall_curve, classification_report
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, roc_curve, roc_auc_score, f1_score, precision_recall_curve, classification_report
 
 
 """Additional function which compute best decision threshold in order to maximize the PrecisionVSRecall or ROC.
@@ -77,7 +78,7 @@ class ModelSelector:
             for model_index in cnf.utilize_models:
                 if cnf.Models[model_index] == XGBClassifier:
                     cnf.Models_grid_params[model_index]['scale_pos_weight'] = [neg_count / pos_count]
-                elif cnf.Models[model_index] == RandomForestClassifier:
+                elif cnf.Models[model_index] == RandomForestClassifier or cnf.Models[model_index] == SVC:
                     cnf.Models_grid_params[model_index]['class_weight'] = [{
                         0: (Y.shape[0] / (2 * neg_count)),
                         1: (Y.shape[0] / (2 * pos_count))
@@ -90,6 +91,7 @@ class ModelSelector:
 
         self.models = [ModelWrapper(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i]) for i
                        in cnf.utilize_models]
+
 
         self.stratified = stratified
         self.shuffle = shuffle
@@ -137,8 +139,8 @@ class ModelSelector:
                     #                                                    model.predict_proba(val_X)[:, 1],
                     #                                                    comp_type="PR")
 
-                    performances[model_index][f'{model_config}']["perf-val"].append(f1_score(val_Y, YP_val, average='macro' if not self.binary_class else None))
-                    performances[model_index][f'{model_config}']["perf-train"].append(f1_score(train_Y, YP_train, average='macro' if not self.binary_class else None))
+                    performances[model_index][f'{model_config}']["perf-val"].append(f1_score(val_Y, YP_val, average='macro' if not self.binary_class else 'binary'))
+                    performances[model_index][f'{model_config}']["perf-train"].append(f1_score(train_Y, YP_train, average='macro' if not self.binary_class else 'binary'))
 
                     """Keep false positive rate, true positive rate for later plotting with shadowing for ROC-AUC curves"""
                     # fpr, tpr, _ = roc_curve(val_Y, YP_val)
@@ -162,7 +164,9 @@ class ModelSelector:
 
             best_config = [(config, performances[model_index][config]["perf-val"]) for config in
                                  performances[model_index]]
+            
             best_config, val_performance = max(best_config, key=itemgetter(1))
+            
 
             """Store best configuration in form of string, avg train performance, avg validation performance as tuple"""
             self.best_model_config.append( (best_config, performances[model_index][best_config]['perf-train'], val_performance) )
@@ -172,6 +176,8 @@ class ModelSelector:
             self.models[model_index].fit(X, Y)
 
         """Get best configuration tuples based on avg validation performance"""
+        
+
         the_One_best = max(self.best_model_config, key=lambda data:data[2])
         self.best_model_index = self.best_model_config.index(the_One_best)
 
@@ -195,7 +201,7 @@ class ModelSelector:
                                                                 Y_pred,
                                                                 comp_type="PR")
 
-            hold_out_perf = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else None)  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
+            hold_out_perf = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else 'binary')  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
 
             """Update the model decision threshold"""
             self.models[model_index].decision_th = best_threshold
@@ -211,16 +217,35 @@ class ModelSelector:
 
         pipeline_result .to_csv(f'{cnf.STATS_PATH}pipeline_result.csv', index=False, sep='\t')
 
+        
         Y_pred = self.models[self.best_model_index].predict_proba(X_hold_out)
-        if self.binary_class:
+        if self.binary_class: 
             Y_pred = Y_pred[:, 1] >= self.models[self.best_model_index].decision_th
 
         ROC_AUC = roc_auc_score(Y_hold_out, Y_pred, multi_class="raise" if self.binary_class else 'ovr')
-        F1 = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else None)
-        report = classification_report(Y_hold_out, Y_pred, target_names=cnf.MultyClassNames)
+        
+        if not self.binary_class:
+            Y_pred = self.models[self.best_model_index].predict(X_hold_out)
 
-        logs = f"Model achieve scores over test set: ROC-AUC:{ROC_AUC}, F1:{F1}\n" + \
+        F1 = f1_score(Y_hold_out, Y_pred, 
+                      average='binary' if self.binary_class else 'macro')
+
+        precision = precision_score(Y_hold_out, Y_pred,
+                          average='binary' if self.binary_class else 'macro')
+
+        recall = recall_score(Y_hold_out, Y_pred,
+                          average='binary' if self.binary_class else 'macro')
+
+        if not self.cont_values and (cnf.MultyClassNames is None or len(cnf.MultyClassNames) < len(set(Y_hold_out))):
+            cnf.MultyClassNames = [f"class {i}" for i in range(len(set(Y_hold_out)))]
+
+        report = classification_report(Y_hold_out, Y_pred, target_names=[cnf.MultyClassNames[i] for i in self.models[self.best_model_index].model.classes_] )
+
+        logs = f"Model achieve scores over test set: ROC-AUC:{ROC_AUC}, F1:{F1} Precision:{precision} Recall:{recall}\n" + \
                f"Classification report:\n{report}"
+        if self.binary_class:
+            tn, fp, fn, tp = confusion_matrix(Y_hold_out,Y_pred).ravel()
+            logs += f"\nTN\t\tFP\t\tFN\t\tTP\n{tn}\t{fp}\t{fn}\t{tp}\n"
 
         print(logs)
         f_out = open(f"{cnf.STATS_PATH}report.txt", "w+")
@@ -229,7 +254,7 @@ class ModelSelector:
 
 
     def store_final_model(self, X_ALL, Y_ALL):
-        self.models[self.best_model_index].train(X_ALL, Y_ALL)
+        self.models[self.best_model_index].fit(X_ALL, Y_ALL)
         self.models[self.best_model_index].save_model()
         del(self.models)
 

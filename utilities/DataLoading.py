@@ -118,7 +118,7 @@ class DataLoading:
             if test:
                 X_test, Y_test = self._load_csv_file(self.single_file.replace(".csv", self.hidden_postfix))
                 Y_test = Y_test.astype(int)
-            targets = set(Y_train) if train else set(Y_train)
+            targets = set(Y_train) if train else set(Y_test)
 
             if self.verbose:
                 stats_v = []

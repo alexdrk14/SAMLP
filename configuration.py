@@ -1,20 +1,22 @@
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
 
 DATA_PATH = 'data/'
 STATS_PATH = 'stats/'
 PLOTS_PATH = 'plots/'
-InputFileName = "v2_dataset_only_families.csv"
+InputFileName = "insert_your_filename_data.csv"
 
 features_file = f"{STATS_PATH}selected_features.txt"
 
 """Feature selection initial starting range for alpha parameter"""
 fs_grid_params = {'alpha': np.arange(0.00001, 0.0001, 0.00001)}
 FOLD_K = 5
-NumberOfConfig = 50
+NumberOfConfig = 20
 
-MultyClassNames = ["Emotet", "Dridex", "QakBot", "BazarLoader", "BumbleBee"]
+MultyClassNames = {0: "Benign",
+                   1: "Malicious"}
 
 Models_grid_params = [#"""XGBoost model"""
                         {'max_depth': [6, 9, 12],
@@ -38,10 +40,13 @@ Models_grid_params = [#"""XGBoost model"""
                          'max_features': ['sqrt'],
                          'min_samples_leaf': [1, 2, 3, 4, 5],
                          'min_samples_split': [2, 3, 4, 5, 6, 7, 8],
-                         'n_estimators': [1000, 1500, 2000, 2500, 3000, 3500]}
+                         'n_estimators': [1000, 1500, 2000, 2500, 3000, 3500]},
+                        
+                        #"""GNB"""
+                        {'var_smoothing': [10**(-7), 10**(-8), 10**(-9), 10**(-10)]}
                     ]
 
-Models = [XGBClassifier, RandomForestClassifier]
-Models_Names = ["XGBoost", "RandomForest"]
+Models = [XGBClassifier, RandomForestClassifier, GaussianNB]
+Models_Names = ["XGBoost", "RandomForest", "GaussianNB"]
 
-utilize_models = [0, 1]
+utilize_models = [0, 1, 2]

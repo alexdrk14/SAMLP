@@ -54,8 +54,8 @@ def plot_roc_curves(model_names, data, output_path):
     plt.savefig(f'{output_path}roc_curves.png', bbox_inches='tight', dpi=600, facecolor='w')
 
 
-def plot_shap_figure(model, data, binary=True):
-    explainer = shap.TreeExplainer(model)
+def plot_shap_figure(model_wrapper, data, binary=True):
+    explainer = shap.TreeExplainer(model_wrapper.model)
     fig = plt.figure()
     if binary:
         shap_values = explainer(data)
@@ -65,26 +65,30 @@ def plot_shap_figure(model, data, binary=True):
     else:
         shap_values = explainer.shap_values(data)
         for categ in range(0,len(shap_values)):
-            shap.summary_plot(shap_values[categ], plot_type='violin', show=False)
+            shap.summary_plot(shap_values[categ], feature_names=data.columns, plot_type='violin', show=False)
             fig.savefig(f'{cnf.PLOTS_PATH}shap_class_{categ}.png', bbox_inches='tight', dpi=600, facecolor='w')
             plt.clf()
-        shap.summary_plot(shap_values, data.values, 
+        shap.summary_plot(shap_values, 
                           plot_type='bar', 
-                          class_names=model.classes_,
+                          class_names=[cnf.MultyClassNames[ind] for ind in model_wrapper.model.classes_],
                           feature_names=data.columns,
                           show=False)
         fig.savefig(f'{cnf.PLOTS_PATH}shap_bar_all.png', bbox_inches='tight', dpi=600, facecolor='w')
         plt.clf()
 
-def plot_confusion_figure(model, data_X, data_Y):
+def plot_confusion_figure(model_wrapper, data_X, data_Y):
     fig = plt.figure()
 
-    YP = model.predict(data_X) if model.decision_th is None else model.predict(data_X)[:, 1] >= model.decision_th
-    cm = confusion_matrix(data_Y, YP)
+    YP = model_wrapper.predict(data_X) if model_wrapper.decision_th is None else model_wrapper.predict_proba(data_X)[:, 1] >= model_wrapper.decision_th
+    #cm = confusion_matrix(data_Y, YP)
     
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                               display_labels=cnf.MultyClassNames)
-    disp.plot()
+    ConfusionMatrixDisplay.from_predictions(data_Y, YP,
+                                            display_labels=[cnf.MultyClassNames[ind] for ind in model_wrapper.model.classes_],
+                                            xticks_rotation="vertical",
+                                            colorbar=False)
+    #disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+    #                           display_labels=cnf.MultyClassNames)
+    #disp.plot()
  
     plt.savefig(f'{cnf.PLOTS_PATH}confusion_matrix.png', bbox_inches='tight', dpi=600, facecolor='w')
     plt.clf()
