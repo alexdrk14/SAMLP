@@ -4,7 +4,7 @@ Current github repo provides implementation of Semi-Automatic Machine Learning P
 ## Requirements
 Installation of required packages:
 ```bash
-pip3 install -r requirements.txt
+python3.9 -m pip install -r requirements.txt
 ```
 
 ## Model Explainability
