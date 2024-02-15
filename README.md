@@ -13,7 +13,7 @@ The SAMLP provide the entire machine learning pipeline, including:
    - Class imbalance consideration during the feature selection
    - K-Fold Cross validation
  - Classification (binary/multiclass) hyperparameter fine-tuning
-   - Models: XGBoost, RandomForest, SVM
+   - Models: XGBoost, RandomForest, GNB
    - Consideration of the class imbalance 
    - K-Fold Cross validation
    - F1 performance measurement due the class imbalance 
