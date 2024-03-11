@@ -12,21 +12,17 @@ Implementation of data loading utility. It allows to load data from data path an
 import pandas as pd
 import numpy as np
 from os import path
-import utilities.mongoConfig as cnf
 from sklearn.model_selection import train_test_split
-import configuration as cnf
 
 
 class DataLoading:
 
-    def __init__(self, test_size=0.2, verbose=False, shuffle=True):
+    def __init__(self, filename,
+                 data_path, sensitive, target,
+                 test_size=0.2, verbose=False, shuffle=True):
         """Define all type of features filenames (output files from feature extraction methods)"""
-
-        data_path = cnf.DATA_PATH
-        if not data_path.endswith('/'):
-            data_path += '/'
         
-        self.single_file = f'{cnf.DATA_PATH}{cnf.InputFileName}'
+        self.single_file = f'{data_path}{filename}'
 
         self.visible_postfix = "_visible.csv"
         self.hidden_postfix = "_hold_out.csv"
@@ -34,6 +30,9 @@ class DataLoading:
         self.test_size = test_size
         self.verbose = verbose
         self.shuffle = shuffle
+
+        self.sensitive = sensitive
+        self.target = target
 
         self.main()
 
@@ -76,10 +75,10 @@ class DataLoading:
         """ Stratified split dataset into two portions
             Visible (Train/Validation) and Test portion as a hold-out
         """
-        X_visible, X_test, _, _ = train_test_split(data, data["target"],
+        X_visible, X_test, _, _ = train_test_split(data, data[self.target],
                                                    test_size=self.test_size,
                                                    shuffle=self.shuffle,
-                                                   stratify=data["target"])
+                                                   stratify=data[self.target])
         return X_visible, X_test
 
 
@@ -93,10 +92,9 @@ class DataLoading:
 
     def _load_csv_file(self, filename):
         X = pd.read_csv(filename, sep=",", header=0)
-        Y = X["target"].copy()
-        to_drop = ['target']
-        if 'IP' in X.columns:
-            to_drop.append("IP")
+        Y = X[self.target].copy()
+        to_drop = [self.target] + self.sensitive if self.sensitive is not None else [self.target]
+
 
         X.drop(to_drop, axis=1, inplace=True)
         X.replace([np.inf, -np.inf], 0, inplace=True)

@@ -41,12 +41,12 @@ Models_grid_params = [#"""XGBoost model"""
                          'min_samples_leaf': [1, 2, 3, 4, 5],
                          'min_samples_split': [2, 3, 4, 5, 6, 7, 8],
                          'n_estimators': [1000, 1500, 2000, 2500, 3000, 3500]},
-                        
+
                         #"""GNB"""
                         {'var_smoothing': [10**(-7), 10**(-8), 10**(-9), 10**(-10)]}
                     ]
 
-Models = [XGBClassifier, RandomForestClassifier, GaussianNB]
-Models_Names = ["XGBoost", "RandomForest", "GaussianNB"]
+Models = [XGBClassifier]#, RandomForestClassifier, GaussianNB]
+Models_Names = ["XGBoost"]#, "RandomForest", "GaussianNB"]
 
-utilize_models = [0, 1, 2]
+utilize_models = [0]#, 1, 2]
