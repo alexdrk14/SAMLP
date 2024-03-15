@@ -77,12 +77,12 @@ class FeatureSelector:
         # best_alpha = best_alpha[0][0]
         best_alpha = max(lasso_coef, key=lasso_coef.get)
 
-        new_range = create_new_grid(self.params['alpha'], best_alpha)
+        new_range = self.create_new_grid(best_alpha)
         if new_range is not None:
             if self.verbose: print(f"Lasso found boundary alpha: {best_alpha} from {cnf.fs_grid_params['alpha']}")
 
             """Update the alpha range"""
-            self.params['alpha'] = new_range
+            self.params = new_range
             if self.verbose: print(f"New alpha range: {cnf.fs_grid_params['alpha']}")
             return None
 
@@ -137,34 +137,34 @@ class FeatureSelector:
     """Dynamic creation of the parameter range based on the previous range and selected best alpha
     In case of lower value create new range over smallest values with extra padding. Similarly works on high ranges"""
     def create_new_grid(self, found):
-        if len(self.params['alpha']) < 2:
+        if len(self.params) < 2:
             return None
 
-        self.params['alpha'].sort()
-        step = self.params['alpha'][1] - self.params['alpha'][0]
+        self.params.sort()
+        step = self.params[1] - self.params[0]
 
         """If found parameter for lasso belong to the lower or upper bound we need to extend the range and check again"""
-        if found in [self.params['alpha'][0], self.params['alpha'][-1]]:
+        if found in [self.params[0], self.params[-1]]:
             """Minimum case """
-            if found == self.params['alpha'][0]:
-                end = self.params['alpha'][1]
-                start = self.params['alpha'][0] - self.params['alpha'][1]
+            if found == self.params[0]:
+                end = self.params[1]
+                start = self.params[0] - self.params[1]
 
                 """If the lower bound become negative, we reduce the step and compute the range again with small overlap over the high values"""
-                if end - (len(self.params['alpha']) * step) < 0.0:
+                if end - (len(self.params) * step) < 0.0:
 
-                    start = end - (len(self.params['alpha']) * step)
+                    start = end - (len(self.params) * step)
                     end += step
 
-            elif found == max(self.params['alpha']):
-                start = self.params['alpha'][-2]  # found
-                end = start + (len(self.params['alpha']) * step)
+            elif found == max(self.params):
+                start = self.params[-2]  # found
+                end = start + (len(self.params) * step)
 
             """Check if start or end is too high or too low"""
             if start <= 0.000001 or end > 10 or step <= 0.000001:
                 return None
             """Return new updated range"""
-            step = (end - start) / len(self.params['alpha'])
+            step = (end - start) / len(self.params)
             return np.arange(start, end, step)
         else:
             """In other case when found value belong between upper and lower bound we have found best local value"""
