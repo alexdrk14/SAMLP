@@ -40,7 +40,7 @@ class Piepeline:
         self.outputpath = outputpath
 
         """Check if all necessary folders are exist or need to be created"""
-        if os.path.isdir(self.outputpath):
+        if not os.path.isdir(self.outputpath):
             os.mkdir(self.outputpath)
             os.mkdir(self.outputpath + "stats/")
             os.mkdir(self.outputpath + "plots/")
@@ -53,7 +53,7 @@ class Piepeline:
 
         """Loading the Data splited in train/test and hold-out portions"""
         DL = DataLoading(filename=self.filename, data_path=self.datapath,
-                        sensitive=sensitive, targe=target,
+                        sensitive=sensitive, target=target,
                         verbose=self.verbose)
 
         """Load only the visible data portion containing Train/Validation"""
@@ -62,7 +62,7 @@ class Piepeline:
 
         """Create feature selector"""
         print(f'{datetime.now()} Feature selection')
-        FS = FeatureSelector(params=cnf.fs_grid_params, output_path=self.outputpath,
+        FS = FeatureSelector(output_path=self.outputpath,
                              stratified=self.stratified, shuffle=self.shuffle,
                              verbose=self.verbose)
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     sensitive = args.sensitive.split(',') if args.sensitive != "" else None
     print(f'\tSensitive columns: {sensitive}')
     print(f'\tTarget: {args.target}')
-    _ = Piepeline(stratified=args.filename,
+    _ = Piepeline(filename=args.filename,
                   datapath=args.datapath,
                   outputpath=args.outputpath,
                   sensitive=sensitive,

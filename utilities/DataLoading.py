@@ -23,6 +23,10 @@ class DataLoading:
         """Define all type of features filenames (output files from feature extraction methods)"""
         
         self.single_file = f'{data_path}{filename}'
+        with open(self.single_file,'r') as reader:
+            line = reader.readline()
+            self.sep = ',' if ',' in line else '\t'
+        
 
         self.visible_postfix = "_visible.csv"
         self.hidden_postfix = "_hold_out.csv"
@@ -53,8 +57,9 @@ class DataLoading:
         if self.verbose: print("Data Loading: Prepare function")
 
         """Read CSV file and balance the classes"""
-        df = pd.read_csv(self.single_file, header=0, sep=',')
-
+        df = pd.read_csv(self.single_file, header=0, sep=self.sep)
+        df.replace([np.inf, -np.inf], 0, inplace=True)
+        
         """Split the data into train/val and testing sets"""
         visible_df, test_df = self.split(df)
 
@@ -85,13 +90,13 @@ class DataLoading:
     def store_df(self, X_visible, X_test):
         """Store dataframes in separate files for each feature category as visible and hidden portion"""
         X_visible.to_csv(self.single_file.replace(".csv", self.visible_postfix),
-                        sep=",", index=False)
+                        sep=self.sep, index=False)
         X_test.to_csv(self.single_file.replace(".csv", self.hidden_postfix),
-                        sep=",", index=False)
+                        sep=self.sep, index=False)
 
 
     def _load_csv_file(self, filename):
-        X = pd.read_csv(filename, sep=",", header=0)
+        X = pd.read_csv(filename, sep=self.sep, header=0)
         Y = X[self.target].copy()
         to_drop = [self.target] + self.sensitive if self.sensitive is not None else [self.target]
 
