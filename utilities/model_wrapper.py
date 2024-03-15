@@ -22,7 +22,7 @@ STATS_PATH = 'stats/'
 
 class ModelWrapper:
 
-    def __init__(self, nmbr_to_select=0, feature_category="", configs_ranges={}, model=None):
+    def __init__(self, nmbr_to_select=0, feature_category="", configs_ranges={}, model=None, output_path=""):
 
         self.__model_origin = model
         self.scaller = None
@@ -30,6 +30,8 @@ class ModelWrapper:
         self.decision_th = None
         self.features = None 
         self.scaler = None
+
+        self.output_path = output_path
 
         """Define number of configurations that should be selected from 
         pre-define spaces of possible hyper-parameter configurations"""
@@ -65,13 +67,13 @@ class ModelWrapper:
         """Store selected parameters"""
         temp_data = {"parameters": self.config,
                      "decision_threshold": self.decision_th}
-        f_out = open(f'{STATS_PATH}best_model_params.txt', "w+")
+        f_out = open(f'{self.output_path}{STATS_PATH}best_model_params.txt', "w+")
         f_out.write(f'{temp_data}\n')
         f_out.close()
 
     def __load_params(self):
         """Store selected parameters"""
-        temp_data = ast.literal_eval(open(f'{STATS_PATH}best_model_params.txt', "r").read())
+        temp_data = ast.literal_eval(open(f'{self.output_path}{STATS_PATH}best_model_params.txt', "r").read())
         self.config = temp_data["parameters"]
         self.decision_th = temp_data["decision_threshold"]
 
@@ -79,7 +81,7 @@ class ModelWrapper:
     """Store model in form of pickle object for further usage"""
     def save_model(self):
         self.__store_params()
-        pickle.dump(self.model, open(f'{STATS_PATH}model.pkl', "wb"))
+        pickle.dump(self.model, open(f'{self.output_path}{STATS_PATH}model.pkl', "wb"))
 
 
     """Read pickle form of pre-trained model for further usage as predictor"""
@@ -88,11 +90,11 @@ class ModelWrapper:
         #best_model = df['valid_perf'].idxmax()
 
         #self.decision_th = df.iloc[best_model]['decision_threshold'] if df.iloc[best_model]['decision_threshold'] != -1.0 else None
-        self.features = ast.literal_eval(open(f'{STATS_PATH}selected_features.txt').read())
+        self.features = ast.literal_eval(open(f'{self.output_path}{STATS_PATH}selected_features.txt').read())
 
         self.__load_params()
 
-        with open(f'{STATS_PATH}model.pkl', "rb") as f_in:
+        with open(f'{self.output_path}{STATS_PATH}model.pkl', "rb") as f_in:
             self.model = pickle.load(f_in)
 
     def fit(self, x, y):

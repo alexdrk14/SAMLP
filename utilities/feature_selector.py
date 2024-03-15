@@ -19,49 +19,17 @@ from sklearn.model_selection import StratifiedKFold, GridSearchCV
 
 import configuration as cnf
 
-
-"""Dynamic creation of the parameter range based on the previous range and selected best alpha
-In case of lower value create new range over smallest values with extra padding. Similarly works on high ranges"""
-def create_new_grid(values, found):
-    if len(values) < 2:
-        return None
-
-    values.sort()
-    step = values[1] - values[0]
-
-    """If found parameter for lasso belong to the lower or upper bound we need to extend the range and check again"""
-    if found in [values[0], values[-1]]:
-        """Minimum case """
-        if found == values[0]:
-            end = values[1]  # found
-            start = values[0] - values[1]  # end - (len(values) * step)
-
-            """If the lower bound become negative, we reduce the step and compute the range again with small overlap over the high values"""
-            if end - (len(values) * step) < 0.0:
-                # step /= 10
-                start = end - (len(values) * step)
-                end += step  # step*(int(0.5* len(values)) + 1 )
-
-        elif found == max(values):
-            start = values[-2]  # found
-            end = start + (len(values) * step)
-        """Check if start or end is too high or too low"""
-        if start <= 0.000001 or end > 10 or step <= 0.000001:
-            return None
-        """Return new updated range"""
-        step = (end - start) / len(values)
-        return np.arange(start, end, step)
-    else:
-        """In other case when found value belong between upper and lower bound we have found best local value"""
-        return None
-
 """Feature selection class"""
 class FeatureSelector:
-    def __init__(self, stratified=True, shuffle=True, verbose=True):
+    def __init__(self, params=None, output_path=None,
+                       stratified=True, shuffle=True,
+                       verbose=True):
 
         self.verbose = verbose
         self.stratified = stratified
         self.shuffle = shuffle
+        self.params = params if params is not None else cnf.fs_grid_params['alpha']
+        self.output_path = output_path
 
     def __feature_selection_round(self, X, Y, executions=0):
         """Check if feature selection is already done, we can simply load the results"""
@@ -93,7 +61,7 @@ class FeatureSelector:
             ])
             kfolds = StratifiedKFold(cnf.FOLD_K)
             search = GridSearchCV(pipeline,
-                                  {'model__alpha': cnf.fs_grid_params['alpha']},
+                                  {'model__alpha': self.params},
                                   cv=kfolds.split(X_balanc, Y_balanc),
                                   scoring="neg_mean_squared_error",
                                   verbose=3,
@@ -109,35 +77,37 @@ class FeatureSelector:
         # best_alpha = best_alpha[0][0]
         best_alpha = max(lasso_coef, key=lasso_coef.get)
 
-        new_range = create_new_grid(cnf.fs_grid_params['alpha'], best_alpha)
+        new_range = create_new_grid(self.params['alpha'], best_alpha)
         if new_range is not None:
             if self.verbose: print(f"Lasso found boundary alpha: {best_alpha} from {cnf.fs_grid_params['alpha']}")
 
             """Update the alpha range"""
-            cnf.fs_grid_params['alpha'] = new_range
+            self.params['alpha'] = new_range
             if self.verbose: print(f"New alpha range: {cnf.fs_grid_params['alpha']}")
             return None
 
         if self.verbose: print(f'Best lasso alpha:{best_alpha} from {cnf.fs_grid_params["alpha"]}')
 
+        self.best_alpha = best_alpha
         model_L = Lasso(max_iter=1000000, alpha=best_alpha)
         scaler = StandardScaler()
 
         """Fit the lasso model with best found alpha and the entire data used in feature selection"""
         model_L.fit(scaler.fit_transform(X), Y)
 
-
-        f_out = open(f'{cnf.STATS_PATH}log_lasso_alpha.txt', "w+")
-        f_out.write(f'Best alpha:{best_alpha}\n')
-        f_out.close()
+        if self.verbose:
+            f_out = open(f'{self.output_path}stats/log_lasso_alpha.txt', "w+")
+            f_out.write(f'Best alpha:{best_alpha}\n')
+            f_out.close()
 
         selected_features = [feature for feature, coef in zip(X.columns.to_list(), model_L.coef_) if coef != 0]
 
 
         # self.feature_transl = dill.load(open("stats/feat_translate.dill", "rb"))
-        f_out = open(cnf.features_file, "w+")
-        f_out.write(f'{selected_features}')
-        f_out.close()
+        if self.verbose:
+            f_out = open(f'{self.output_path}stats/selected_features.txt', "w+")
+            f_out.write(f'{selected_features}')
+            f_out.close()
 
         return selected_features
 
@@ -162,3 +132,40 @@ class FeatureSelector:
                   f'\tSelected {len(features_found )} of {initial_features} features.')
 
         return features_found
+
+
+    """Dynamic creation of the parameter range based on the previous range and selected best alpha
+    In case of lower value create new range over smallest values with extra padding. Similarly works on high ranges"""
+    def create_new_grid(self, found):
+        if len(self.params['alpha']) < 2:
+            return None
+
+        self.params['alpha'].sort()
+        step = self.params['alpha'][1] - self.params['alpha'][0]
+
+        """If found parameter for lasso belong to the lower or upper bound we need to extend the range and check again"""
+        if found in [self.params['alpha'][0], self.params['alpha'][-1]]:
+            """Minimum case """
+            if found == self.params['alpha'][0]:
+                end = self.params['alpha'][1]
+                start = self.params['alpha'][0] - self.params['alpha'][1]
+
+                """If the lower bound become negative, we reduce the step and compute the range again with small overlap over the high values"""
+                if end - (len(self.params['alpha']) * step) < 0.0:
+
+                    start = end - (len(self.params['alpha']) * step)
+                    end += step
+
+            elif found == max(self.params['alpha']):
+                start = self.params['alpha'][-2]  # found
+                end = start + (len(self.params['alpha']) * step)
+
+            """Check if start or end is too high or too low"""
+            if start <= 0.000001 or end > 10 or step <= 0.000001:
+                return None
+            """Return new updated range"""
+            step = (end - start) / len(self.params['alpha'])
+            return np.arange(start, end, step)
+        else:
+            """In other case when found value belong between upper and lower bound we have found best local value"""
+            return None

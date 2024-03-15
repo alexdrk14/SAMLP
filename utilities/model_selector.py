@@ -57,13 +57,15 @@ def compute_best_threshold(Y_true, Y_predicted, comp_type="PR"):
 
 class ModelSelector:
 
-    def __init__(self, Y, stratified=True, shuffle=True, verbose=True):
+    def __init__(self, Y, stratified=True, shuffle=True, verbose=True, output_path=""):
 
 
         """Local variables that used in order to identify if the dataset is for binary classification or for regression"""
         self.binary_class = True if len(set(Y)) == 2 else False
         self.cont_values = True if type(list(Y)[0]) == np.float64 or len(
             set(Y)) > 15 else False
+
+        self.output_path = output_path
 
 
 
@@ -89,7 +91,7 @@ class ModelSelector:
                     cnf.Models_grid_params[model_index]['objective'] = ['multi: softprob']
                     cnf.Models_grid_params[model_index]['num_class'] = [len(set(Y))]
 
-        self.models = [ModelWrapper(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i]) for i
+        self.models = [ModelWrapper(nmbr_to_select=cnf.NumberOfConfig, configs_ranges=cnf.Models_grid_params[i], model=cnf.Models[i], output_path=output_path) for i
                        in cnf.utilize_models]
 
 
@@ -248,7 +250,7 @@ class ModelSelector:
             logs += f"\nTN\t\tFP\t\tFN\t\tTP\n{tn}\t{fp}\t{fn}\t{tp}\n"
 
         print(logs)
-        f_out = open(f"{cnf.STATS_PATH}report.txt", "w+")
+        f_out = open(f"{self.output_path}stats/report.txt", "w+")
         f_out.write(f"{logs}")
         f_out.close()
 

@@ -20,6 +20,7 @@ from utilities.plotting import plot_shap_figure, plot_confusion_figure
 class Piepeline:
     def __init__(self, filename, datapath,
                        sensitive, target,
+                       outputpath,
                        stratified=True,
                        shuffle=True, verbose=True):
          
@@ -32,11 +33,18 @@ class Piepeline:
             datapath += '/'
         self.datapath = datapath
 
+        outputpath = outputpath if outputpath is not None else f'./{filename.split(".csv")[0]}/'
+
+        if not outputpath.endswith('/'):
+            outputpath += '/'
+        self.outputpath = outputpath
+
         """Check if all necessary folders are exist or need to be created"""
-        if os.path.isdir(cnf.PLOTS_PATH):
-            os.mkdir(cnf.PLOTS_PATH)
-        if os.path.isdir(cnf.STATS_PATH):
-            os.mkdir(cnf.STATS_PATH)
+        if os.path.isdir(self.outputpath):
+            os.mkdir(self.outputpath)
+            os.mkdir(self.outputpath + "stats/")
+            os.mkdir(self.outputpath + "plots/")
+
 
         self.main(sensitive, target)
        
@@ -54,7 +62,9 @@ class Piepeline:
 
         """Create feature selector"""
         print(f'{datetime.now()} Feature selection')
-        FS = FeatureSelector(stratified=self.stratified, shuffle=self.shuffle, verbose=self.verbose)
+        FS = FeatureSelector(params=cnf.fs_grid_params, output_path=self.outputpath,
+                             stratified=self.stratified, shuffle=self.shuffle,
+                             verbose=self.verbose)
 
         """Get best features based on the visible data portion, with use of Lasso feature selector"""
         selected_features = FS.get_features(X_train, Y_train)
@@ -67,7 +77,7 @@ class Piepeline:
         X_train.drop([feature for feature in X_train.columns if feature not in selected_features],
                      axis=1, inplace=True)
 
-        MS = ModelSelector(Y_train, stratified=self.stratified, shuffle=self.shuffle, verbose=self.verbose)
+        MS = ModelSelector(Y_train, stratified=self.stratified, shuffle=self.shuffle, verbose=self.verbose, )
         MS.fine_tune_models(X_train, Y_train)
 
         print(f'{datetime.now()} End of fine-tuning\n' +
@@ -103,6 +113,8 @@ parser.add_argument('-s', dest="sensitive", default="",
                     help='Comma separated names of the columns that should be excluded from the training/testing data example:-s user_id,id,ID ')
 parser.add_argument('-t', dest="target", default="target",
                     help='Name of the target column (default: "target") example: -t class_target ')
+parser.add_argument('-o', dest="outputpath", default=None,
+                    help='The directory where the results would be stored. If not provided, script will create folder based on filename')
 if __name__ == "__main__":
     args = parser.parse_args()
 
@@ -112,5 +124,6 @@ if __name__ == "__main__":
     print(f'\tTarget: {args.target}')
     _ = Piepeline(stratified=args.filename,
                   datapath=args.datapath,
+                  outputpath=args.outputpath,
                   sensitive=sensitive,
                   target=args.target)
