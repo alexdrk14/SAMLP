@@ -217,7 +217,7 @@ class ModelSelector:
                                        columns=['name', 'train_perf', 'valid_perf', 'holdout_perf',
                                                'decision_threshold', 'params'])
 
-        pipeline_result .to_csv(f'{cnf.STATS_PATH}pipeline_result.csv', index=False, sep='\t')
+        pipeline_result .to_csv(f'{self.output_path}stats/pipeline_result.csv', index=False, sep='\t')
 
         
         Y_pred = self.models[self.best_model_index].predict_proba(X_hold_out)

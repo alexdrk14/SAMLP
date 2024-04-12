@@ -31,7 +31,7 @@ Models_grid_params = [#"""XGBoost model"""
                         'tree_method': ['gpu_hist'],
                         'predictor': ['gpu_predictor'],
                         'objective': ['binary:logistic'],
-                        'num_parallel_tree': [10],
+                        'num_parallel_tree': [50],
                         'use_label_encoder': [False]},
 
                         #"""RandomForest model"""

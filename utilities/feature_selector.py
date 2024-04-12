@@ -57,7 +57,7 @@ class FeatureSelector:
 
             pipeline = Pipeline([
                 ('scaler', StandardScaler()),
-                ('model', Lasso(max_iter=1000000))
+                ('model', Lasso(max_iter=500000))
             ])
             kfolds = StratifiedKFold(cnf.FOLD_K)
             search = GridSearchCV(pipeline,
@@ -65,7 +65,7 @@ class FeatureSelector:
                                   cv=kfolds.split(X_balanc, Y_balanc),
                                   scoring="neg_mean_squared_error",
                                   verbose=3,
-                                  n_jobs=60
+                                  n_jobs=120
                                   )
             search.fit(X, Y)
             # lasso_coef[search.best_params_['model__alpha']].append(search.best_estimator_.named_steps['model'].coef_)
@@ -89,7 +89,7 @@ class FeatureSelector:
         if self.verbose: print(f'Best lasso alpha:{best_alpha} from {cnf.fs_grid_params["alpha"]}')
 
         self.best_alpha = best_alpha
-        model_L = Lasso(max_iter=1000000, alpha=best_alpha)
+        model_L = Lasso(max_iter=2000000, alpha=best_alpha)
         scaler = StandardScaler()
 
         """Fit the lasso model with best found alpha and the entire data used in feature selection"""
@@ -115,12 +115,16 @@ class FeatureSelector:
 
     def get_features(self, X, Y):
         if self.verbose: print(f'{datetime.now()} Start fine-tuning of feature selection')
-
+        
         """Local variables that used in order to identify if the dataset is for binary classification or for regression"""
         self.binary_class = True if len(set(Y)) == 2 else False
         self.cont_values = True if type(list(Y)[0]) == np.float64 or len(set(Y)) > 15 else False
 
-        features_found = None
+        if os.path.isfile(f'{self.output_path}stats/selected_features.txt'):
+            if self.verbose: print("Feature selector skip fs since found previously selected features.")
+            features_found = ast.literal_eval(open(f'{self.output_path}stats/selected_features.txt', "r").read())
+        else:
+            features_found = None
         executions = 0
         initial_features = X.shape[1]
         while features_found is None:

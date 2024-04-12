@@ -23,11 +23,7 @@ class DataLoading:
         """Define all type of features filenames (output files from feature extraction methods)"""
         
         self.single_file = f'{data_path}{filename}'
-        with open(self.single_file,'r') as reader:
-            line = reader.readline()
-            self.sep = ',' if ',' in line else '\t'
         
-
         self.visible_postfix = "_visible.csv"
         self.hidden_postfix = "_hold_out.csv"
 
@@ -37,6 +33,15 @@ class DataLoading:
 
         self.sensitive = sensitive
         self.target = target
+
+        if self.require_processing():
+            with open(self.single_file,'r') as reader:
+                line = reader.readline()
+                self.sep = ',' if ',' in line else '\t'
+        else:
+            with open(self.single_file.replace('.csv','_visible.csv'),'r') as reader:
+                line = reader.readline()
+                self.sep = ',' if ',' in line else '\t'
 
         self.main()
 
@@ -97,6 +102,9 @@ class DataLoading:
 
     def _load_csv_file(self, filename):
         X = pd.read_csv(filename, sep=self.sep, header=0)
+        print(f'Before: {X.shape}')
+        X.drop_duplicates(keep='last', inplace=True)
+        print(f'After: {X.shape}')
         Y = X[self.target].copy()
         to_drop = [self.target] + self.sensitive if self.sensitive is not None else [self.target]
 

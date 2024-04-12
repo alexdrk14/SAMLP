@@ -77,7 +77,11 @@ class Piepeline:
         X_train.drop([feature for feature in X_train.columns if feature not in selected_features],
                      axis=1, inplace=True)
 
-        MS = ModelSelector(Y_train, stratified=self.stratified, shuffle=self.shuffle, verbose=self.verbose, )
+        MS = ModelSelector(Y_train, stratified=self.stratified, 
+                           shuffle=self.shuffle, 
+                           verbose=self.verbose, 
+                           output_path=self.outputpath)
+
         MS.fine_tune_models(X_train, Y_train)
 
         print(f'{datetime.now()} End of fine-tuning\n' +
@@ -94,8 +98,11 @@ class Piepeline:
 
         print(f'{datetime.now()} Shap explain plotting')
         """Plot SHAP explanability"""
-        plot_shap_figure(MS.models[MS.best_model_index], X_hold, binary=MS.binary_class)
-        
+        try:
+            plot_shap_figure(MS.models[MS.best_model_index], X_hold, binary=MS.binary_class)
+        except Exception as e:
+            print(f'SHAP error: {e}')
+            print('skiping the shap .... ')
         
         plot_confusion_figure(MS.models[MS.best_model_index], X_hold, Y_hold)
         """Merge train and test dataset, train the final model and store it"""
