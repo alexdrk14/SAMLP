@@ -48,4 +48,4 @@ Models_grid_params = [#"""XGBoost model"""
 Models = [XGBClassifier, RandomForestClassifier, GaussianNB] #[XGBClassifier, RandomForestClassifier]
 Models_Names = ["XGBoost", "RandomForest", "GaussianNB"] # ["XGBoost", "RandomForest"
 
-utilize_models = [0 1, 2] # [0,1]
+utilize_models = [0, 1, 2] # [0,1]
