@@ -1,6 +1,6 @@
 """"####################################################################################################################
-Author: Alexander Shevtsov ICS-FORTH
-E-mail: shevtsov@ics.forth.gr, shevtsov@csd.uoc.gr
+Author: TBD
+E-mail: TBD
 -----------------------------------
 Automatic feature selection model, which takes data and manage to automatically fine tune lasso over dynamic range of alpha
 and returns list of selected features.

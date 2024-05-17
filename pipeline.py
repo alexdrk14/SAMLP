@@ -1,6 +1,6 @@
 """"####################################################################################################################
-Author: Alexander Shevtsov ICS-FORTH
-E-mail: shevtsov@ics.forth.gr, shevtsov@csd.uoc.gr
+Author: TBD
+E-mail: TBD
 -----------------------------------
 Parameter fine-tuning and Feature selection for ML model.
 ####################################################################################################################"""

@@ -1,6 +1,6 @@
 """"####################################################################################################################
-Author: Alexander Shevtsov ICS-FORTH
-E-mail: shevtsov@ics.forth.gr / alex.drk14@gmail.com
+Author: TBD
+E-mail: TBD
 -----------------------------------
 Dynamic ModelWrapper class that can take any possible model with limitation of fit/predict/predict_proba functions  and allow:
     - random select possible set of hyper parameter configurations

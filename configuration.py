@@ -6,7 +6,6 @@ from sklearn.naive_bayes import GaussianNB
 DATA_PATH = 'data/'
 STATS_PATH = 'stats/'
 PLOTS_PATH = 'plots/'
-InputFileName = "insert_your_filename_data.csv"
 
 features_file = f"{STATS_PATH}selected_features.txt"
 
@@ -46,7 +45,7 @@ Models_grid_params = [#"""XGBoost model"""
                         {'var_smoothing': [10**(-7), 10**(-8), 10**(-9), 10**(-10)]}
                     ]
 
-Models = [XGBClassifier]#, RandomForestClassifier, GaussianNB]
-Models_Names = ["XGBoost"]#, "RandomForest", "GaussianNB"]
+Models = [XGBClassifier, RandomForestClassifier, GaussianNB] #[XGBClassifier, RandomForestClassifier]
+Models_Names = ["XGBoost", "RandomForest", "GaussianNB"] # ["XGBoost", "RandomForest"
 
-utilize_models = [0]#, 1, 2]
+utilize_models = [0 1, 2] # [0,1]

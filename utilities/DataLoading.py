@@ -1,6 +1,6 @@
 """"####################################################################################################################
-Author: Alexander Shevtsov ICS-FORTH
-E-mail: shevtsov@ics.forth.gr
+Author: TBD
+E-mail: TBD
 -----------------------------------
 Implementation of data loading utility. It allows to load data from data path and manage to :
     - split them into train/validation (visible) and test (hold-out) portions
