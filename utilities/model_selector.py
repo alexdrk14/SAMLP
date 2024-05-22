@@ -184,40 +184,41 @@ class ModelSelector:
         self.best_model_index = self.best_model_config.index(the_One_best)
 
 
-    def measure_hold_out(self, X_hold_out, Y_hold_out):
-        pipeline_result = []
+    def measure_hold_out(self, X_hold_out, Y_hold_out, raw=False):
 
-        for model_index in range(len(self.models)):
+        if not raw:
+            pipeline_result = []
+            for model_index in range(len(self.models)):
 
-            config, train_perf, val_perf = self.best_model_config[model_index]
+                config, train_perf, val_perf = self.best_model_config[model_index]
 
-            Y_pred = self.models[model_index].predict(X_hold_out) if not self.binary_class else self.models[model_index].predict_proba(X_hold_out)
-            best_threshold = None
+                Y_pred = self.models[model_index].predict(X_hold_out) if not self.binary_class else self.models[model_index].predict_proba(X_hold_out)
+                best_threshold = None
 
-            """In case of the binary classification compute best decision threshold and update the predicted targets"""
-            if self.binary_class:
-                Y_pred = Y_pred[:, 1]
+                """In case of the binary classification compute best decision threshold and update the predicted targets"""
+                if self.binary_class:
+                    Y_pred = Y_pred[:, 1]
 
-                """Find best separation threshold and correct the predictions """
-                best_threshold, Y_pred = compute_best_threshold(Y_hold_out,
-                                                                Y_pred,
-                                                                comp_type="PR")
+                    """Find best separation threshold and correct the predictions """
+                    best_threshold, Y_pred = compute_best_threshold(Y_hold_out,
+                                                                    Y_pred,
+                                                                    comp_type="PR")
 
-            hold_out_perf = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else 'binary')  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
+                hold_out_perf = f1_score(Y_hold_out, Y_pred, average='macro' if not self.binary_class else 'binary')  # roc_auc_evaluation(self.Y_holdOUT,model.predict(self.X_holdOUT))
 
-            """Update the model decision threshold"""
-            self.models[model_index].decision_th = best_threshold
+                """Update the model decision threshold"""
+                self.models[model_index].decision_th = best_threshold
 
-            pipeline_result.append([cnf.Models_Names[model_index],
-                                    train_perf, val_perf, hold_out_perf,
-                                    best_threshold, config])
+                pipeline_result.append([cnf.Models_Names[model_index],
+                                        train_perf, val_perf, hold_out_perf,
+                                        best_threshold, config])
 
-        """Store the logs of each best configurations per models with all computed stats"""
-        pipeline_result = pd.DataFrame(pipeline_result,
-                                       columns=['name', 'train_perf', 'valid_perf', 'holdout_perf',
-                                               'decision_threshold', 'params'])
+            """Store the logs of each best configurations per models with all computed stats"""
+            pipeline_result = pd.DataFrame(pipeline_result,
+                                           columns=['name', 'train_perf', 'valid_perf', 'holdout_perf',
+                                                   'decision_threshold', 'params'])
 
-        pipeline_result .to_csv(f'{self.output_path}stats/pipeline_result.csv', index=False, sep='\t')
+            pipeline_result.to_csv(f'{self.output_path}stats/pipeline_result.csv', index=False, sep='\t')
 
         
         Y_pred = self.models[self.best_model_index].predict_proba(X_hold_out)
@@ -244,16 +245,19 @@ class ModelSelector:
         report = classification_report(Y_hold_out, Y_pred, target_names=[cnf.MultyClassNames[i] for i in self.models[self.best_model_index].model.classes_] )
 
         logs = f"Model achieve scores over test set: ROC-AUC:{ROC_AUC}, F1:{F1} Precision:{precision} Recall:{recall}\n" + \
-               f"Classification report:\n{report}"
-        if self.binary_class:
+               f"Classification report:\n{report}" if not raw else f"ROC-AUC:{ROC_AUC} F1:{F1} Precision:{precision} Recall:{recall}"
+
+        if self.binary_class and not raw:
             tn, fp, fn, tp = confusion_matrix(Y_hold_out,Y_pred).ravel()
             logs += f"\nTN\t\tFP\t\tFN\t\tTP\n{tn}\t{fp}\t{fn}\t{tp}\n"
 
         print(logs)
-        f_out = open(f"{self.output_path}stats/report.txt", "w+")
-        f_out.write(f"{logs}")
-        f_out.close()
-
+        if not raw:
+            f_out = open(f"{self.output_path}stats/report.txt", "w+")
+            f_out.write(f"{logs}")
+            f_out.close()
+        else:
+            return logs
 
     def store_final_model(self, X_ALL, Y_ALL):
         self.models[self.best_model_index].fit(X_ALL, Y_ALL)

@@ -20,7 +20,7 @@ from utilities.plotting import plot_shap_figure, plot_confusion_figure
 class Piepeline:
     def __init__(self, filename, datapath,
                        sensitive, target,
-                       outputpath,
+                       outputpath, extra_tests,
                        stratified=True,
                        shuffle=True, verbose=True):
          
@@ -32,6 +32,7 @@ class Piepeline:
         if not datapath.endswith('/'):
             datapath += '/'
         self.datapath = datapath
+        self.extra_tests = extra_tests.strip().split(',') if len(extra_tests) > 0 else None
 
         outputpath = outputpath if outputpath is not None else f'./{filename.split(".csv")[0]}/'
 
@@ -92,9 +93,23 @@ class Piepeline:
         X_hold.drop([feature for feature in X_hold.columns if feature not in selected_features],
                      axis=1, inplace=True)
 
-
         MS.models[MS.best_model_index]
         MS.measure_hold_out(X_hold, Y_hold)
+
+        if self.extra_tests is not None:
+            logs = ''
+            for dataset_name in self.extra_tests:
+                logs += f'{dataset_name} : '
+                exX_hold, exY_hold = DL.load_dataset(splited=False, filename=dataset_name)
+                """Drop noisy/un-selected features"""
+                exX_hold.drop([feature for feature in X_hold.columns if feature not in selected_features],
+                            axis=1, inplace=True)
+                logs += MS.measure_hold_out(exX_hold, exY_hold, raw=True) + '\n'
+            logs += f'Total : ' + MS.measure_hold_out(X_hold, Y_hold, raw=True) + '\n'
+            f_out = open(f'{self.outputpath}multi_test_logs.txt', 'w+')
+            f_out.write(logs)
+            f_out.close()
+
 
         print(f'{datetime.now()} Shap explain plotting')
         """Plot SHAP explanability"""
@@ -122,6 +137,9 @@ parser.add_argument('-t', dest="target", default="target",
                     help='Name of the target column (default: "target") example: -t class_target ')
 parser.add_argument('-o', dest="outputpath", default=None,
                     help='The directory where the results would be stored. If not provided, script will create folder based on filename')
+
+parser.add_argument('--tests', dest="extratests", default='',
+                    help='Comma separated filenames that also should be used for model testing:--tests  my_new_test.csv,extra_test_file.csv')
 if __name__ == "__main__":
     args = parser.parse_args()
 
@@ -133,4 +151,5 @@ if __name__ == "__main__":
                   datapath=args.datapath,
                   outputpath=args.outputpath,
                   sensitive=sensitive,
-                  target=args.target)
+                  target=args.target,
+                  extra_tests = args.extratests)

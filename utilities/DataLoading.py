@@ -113,7 +113,7 @@ class DataLoading:
         X.replace([np.inf, -np.inf], 0, inplace=True)
         return X, Y
 
-    def load_dataset(self, train=False, test=False, splited=True):
+    def load_dataset(self, train=False, test=False, splited=True, filename=None):
 
         if self.verbose:
             print(f'Data Loading: read csv')
@@ -150,7 +150,7 @@ class DataLoading:
             if test:
                 return X_test, Y_test
         else:
-            X, Y = self._load_csv_file(self.single_file)
+            X, Y = self._load_csv_file(self.single_file if filename is None else f'{data_path}{filename}')
             Y = Y.astype(int)
             if self.verbose:
                 stats = []
