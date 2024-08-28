@@ -4,6 +4,7 @@ E-mail: TBD
 -----------------------------------
 Parameter fine-tuning and Feature selection for ML model.
 ####################################################################################################################"""
+import ast
 
 import pandas as pd
 import argparse, os
@@ -137,14 +138,24 @@ parser.add_argument('-t', dest="target", default="target",
                     help='Name of the target column (default: "target") example: -t class_target ')
 parser.add_argument('-o', dest="outputpath", default=None,
                     help='The directory where the results would be stored. If not provided, script will create folder based on filename')
-
+parser.add_argument('-d', dest="dropf", default=None,
+                    help='Filename with features that should be dropped before feature selection (if there any).')
 parser.add_argument('--tests', dest="extratests", default='',
                     help='Comma separated filenames that also should be used for model testing:--tests  my_new_test.csv,extra_test_file.csv')
 if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f'Starting of model creation with filename: {args.filename} and data path:{args.datapath}')
-    sensitive = args.sensitive.split(',') if args.sensitive != "" else None
+    sensitive = args.sensitive.split(',') if args.sensitive != "" else []
+
+    if args.dropf is not None:
+        sensitive += ast.literal_eval(open(args.dropf,'r').read())
+        """make features unique"""
+        sensitive = list(set(sensitive))
+    print(f'Pipeline will remove {len(sensitive)} features')
+    if len(sensitive):
+        sensitive = None
+
     print(f'\tSensitive columns: {sensitive}')
     print(f'\tTarget: {args.target}')
     _ = Piepeline(filename=args.filename,
