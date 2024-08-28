@@ -150,7 +150,7 @@ class DataLoading:
             if test:
                 return X_test, Y_test
         else:
-            X, Y = self._load_csv_file(self.single_file if filename is None else f'{data_path}{filename}')
+            X, Y = self._load_csv_file(self.single_file if filename is None else f'{self.data_path}{filename}')
             Y = Y.astype(int)
             if self.verbose:
                 stats = []

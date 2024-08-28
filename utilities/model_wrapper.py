@@ -8,6 +8,8 @@ Dynamic ModelWrapper class that can take any possible model with limitation of f
     - load / store of trained model and parameters
     - loading of fine-tuned threshold for better prediction
 ####################################################################################################################"""
+import cupy as cp
+cp.cuda.Device(0).use()
 import random, ast, pickle, itertools
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -102,7 +104,7 @@ class ModelWrapper:
             self.scaler = StandardScaler()
             self.model.fit(self.scaler.fit_transform(x), y)
         else:
-            self.model.fit(x, y)
+            self.model.fit(cp.array(x), y)
 
     def train_predict(self, x_train, y_train, x_val, probs=True):
         self.fit(x_train, y_train)
@@ -115,7 +117,7 @@ class ModelWrapper:
             X = X[self.features]
 
         if self.decision_th is None:
-            return self.model.predict(X) if self.scaler is None else self.model.predict(self.scaler.transform(X))
+            return self.model.predict(cp.array(X)) if self.scaler is None else self.model.predict(cp.array(self.scaler.transform(X)))
         else:
             Probs = self.predict_proba(X)[:, 1].copy()
             return Probs > self.decision_th
@@ -123,7 +125,7 @@ class ModelWrapper:
     def predict_proba(self, X):
         if self.features is not None:
             X = X[self.features]
-        return self.model.predict_proba(X) if self.scaler is None else self.model.predict_proba(self.scaler.transform(X))
+        return self.model.predict_proba(cp.array(X)) if self.scaler is None else self.model.predict_proba(cp.array(self.scaler.transform(X)))
 
 
 
