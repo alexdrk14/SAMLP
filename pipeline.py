@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     print(f'Starting of model creation with filename: {args.filename} and data path:{args.datapath}')
     sensitive = args.sensitive.split(',') if args.sensitive != "" else None
-
+    keep = None
     if args.keepf is not None:
         """Make unique the features"""
         keep = list(set(ast.literal_eval(open(args.keepf,'r').read())))

@@ -444,7 +444,7 @@ class FeatureSelector:
             kfolds = StratifiedKFold(n_splits=2)
             indexes = [(train_index, test_index) for train_index, test_index in kfolds.split(X_balanc, Y_balanc)]
 
-            scaler = StandardScaler()
+            scaler = MinMaxScaler()#StandardScaler()
             # X_balanc = scaler.fit_transform(X_balanc)
             for ind, alpha in enumerate(self.params):
                 model = Lasso(max_iter=500000, alpha=alpha)
