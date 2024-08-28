@@ -20,9 +20,9 @@ from utilities.plotting import plot_shap_figure, plot_confusion_figure
 
 class Piepeline:
     def __init__(self, filename, datapath,
-                       sensitive, target,
-                       outputpath, extra_tests,
-                       stratified=True,
+                       sensitive, keepfeatures,
+                       target, outputpath,
+                       extra_tests, stratified=True,
                        shuffle=True, verbose=True):
          
         self.verbose = verbose
@@ -48,10 +48,10 @@ class Piepeline:
             os.mkdir(self.outputpath + "plots/")
 
 
-        self.main(sensitive, target)
+        self.main(sensitive, keepfeatures, target)
        
 
-    def main(self, sensitive, target):
+    def main(self, sensitive, keepfeatures, target):
 
         """Loading the Data splited in train/test and hold-out portions"""
         DL = DataLoading(filename=self.filename, data_path=self.datapath,
@@ -61,6 +61,13 @@ class Piepeline:
         """Load only the visible data portion containing Train/Validation"""
         print(f'{datetime.now()} Pipeline: Data Loading\n')
         X_train, Y_train = DL.load_dataset(train=True, test=False, splited=True)
+
+        if keepfeatures is not None and len(keepfeatures) > 0:
+            print(f'\tRemove unnecessary features. Before: {X_train.shape}')
+            to_drop = [ item for item in X_train.columns if item not in keepfeatures]
+            X_train.drop(to_drop, axis=1, inplace=True)
+            print(f'\t\t\tAfter: {X_train.shape}')
+
 
         """Create feature selector"""
         print(f'{datetime.now()} Feature selection')
@@ -138,23 +145,24 @@ parser.add_argument('-t', dest="target", default="target",
                     help='Name of the target column (default: "target") example: -t class_target ')
 parser.add_argument('-o', dest="outputpath", default=None,
                     help='The directory where the results would be stored. If not provided, script will create folder based on filename')
-parser.add_argument('-d', dest="dropf", default=None,
-                    help='Filename with features that should be dropped before feature selection (if there any).')
+parser.add_argument('-k', dest="keepf", default=None,
+                    help='Filename with features that should be kept before feature selection (if there any).')
 parser.add_argument('--tests', dest="extratests", default='',
                     help='Comma separated filenames that also should be used for model testing:--tests  my_new_test.csv,extra_test_file.csv')
 if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f'Starting of model creation with filename: {args.filename} and data path:{args.datapath}')
-    sensitive = args.sensitive.split(',') if args.sensitive != "" else []
+    sensitive = args.sensitive.split(',') if args.sensitive != "" else None
 
-    if args.dropf is not None:
-        sensitive += ast.literal_eval(open(args.dropf,'r').read())
-        """make features unique"""
-        sensitive = list(set(sensitive))
-    print(f'Pipeline will remove {len(sensitive)} features')
-    if len(sensitive):
-        sensitive = None
+    if args.keepf is not None:
+        """Make unique the features"""
+        keep = list(set(ast.literal_eval(open(args.keepf,'r').read())))
+        print(f'Pipeline will keep {len(keep)} features.')
+
+    if sensitive is not None:
+        print(f'Pipeline will remove {len(sensitive)} sensitive features.')
+
 
     print(f'\tSensitive columns: {sensitive}')
     print(f'\tTarget: {args.target}')
@@ -162,5 +170,6 @@ if __name__ == "__main__":
                   datapath=args.datapath,
                   outputpath=args.outputpath,
                   sensitive=sensitive,
+                  keepfeatures=keep,
                   target=args.target,
                   extra_tests = args.extratests)
