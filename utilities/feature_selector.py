@@ -446,16 +446,17 @@ class FeatureSelector:
 
             scaler = MinMaxScaler()#StandardScaler()
             # X_balanc = scaler.fit_transform(X_balanc)
-            for ind, alpha in enumerate(self.params):
+            print(f'Rep {repetition+1} of {1 if self.cont_values else 5}')
+            for ind, alpha in enumerate(tqdm(self.params)):
                 model = Lasso(max_iter=500000, alpha=alpha)
                 error = 0.0
 
                 for i in range(len(indexes)):
-                    print(f"Fold {i}:")
+                    #print(f"Fold {i}:")
                     X_train, Y_train = scaler.fit_transform(X_balanc.iloc[indexes[i][0]]), Y_balanc.iloc[indexes[i][0]]
                     X_val, Y_val = scaler.transform(X_balanc.iloc[indexes[i][1]]), Y_balanc.iloc[indexes[i][1]]
 
-                    print(f'\tAlpha: {alpha}')
+                    #print(f'\tAlpha: {alpha}')
                     model.fit(X_train, Y_train)
                     error += rmse(Y_val, model.predict(X_val))
                     # errors[alpha].append(rmse(Y_val, model.predict(Y_val)))
@@ -464,7 +465,7 @@ class FeatureSelector:
 
                 # error = cost_func(X_balanc, Y_balanc, alpha, model)
                 errors[alpha].append(error)
-                print(f'Rep: {repetition} Alpha : {alpha} with error : {error}')
+                #print(f'Rep: {repetition} Alpha : {alpha} with error : {error}')
 
         """find alpha that was selected as best most of the times"""
         path = [(alpha, sum(errors[alpha]) / len(errors[alpha]), ind) for ind, alpha in enumerate(self.params)]

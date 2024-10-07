@@ -104,7 +104,7 @@ class ModelWrapper:
             self.scaler = StandardScaler()
             self.model.fit(self.scaler.fit_transform(x), y)
         else:
-            self.model.fit(cp.array(x), y)
+            self.model.fit(cp.array(x).get(), y)
 
     def train_predict(self, x_train, y_train, x_val, probs=True):
         self.fit(x_train, y_train)
@@ -117,7 +117,7 @@ class ModelWrapper:
             X = X[self.features]
 
         if self.decision_th is None:
-            return self.model.predict(cp.array(X)) if self.scaler is None else self.model.predict(cp.array(self.scaler.transform(X)))
+            return self.model.predict(cp.array(X).get()) if self.scaler is None else self.model.predict(cp.array(self.scaler.transform(X)).get())
         else:
             Probs = self.predict_proba(X)[:, 1].copy()
             return Probs > self.decision_th
@@ -125,7 +125,7 @@ class ModelWrapper:
     def predict_proba(self, X):
         if self.features is not None:
             X = X[self.features]
-        return self.model.predict_proba(cp.array(X)) if self.scaler is None else self.model.predict_proba(cp.array(self.scaler.transform(X)))
+        return self.model.predict_proba(cp.array(X).get()) if self.scaler is None else self.model.predict_proba(cp.array(self.scaler.transform(X)).get())
 
 
 
